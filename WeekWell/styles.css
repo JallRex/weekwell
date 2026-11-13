@@ -183,6 +183,30 @@ dialog::backdrop { background: #28223750; backdrop-filter: blur(3px); }
 label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; font-weight: 550; margin-bottom: 18px; min-width: 0; }
 input, select { border: 1px solid #dedbe7; border-radius: 6px; padding: 11px; min-height: 43px; width: 100%; color: var(--ink); background: white; }
 .form-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.time-field { border: 0; padding: 0; margin: 0 0 18px; min-width: 0; }
+.time-field legend { font-size: 12px; font-weight: 550; padding: 0; margin-bottom: 7px; }
+.time-selects { display: flex; align-items: center; gap: 4px; }
+.time-selects select { padding: 10px 4px; min-width: 0; }
+.export-subheading { margin-top: 25px; }
+#export-dialog h3 { font-size: 14px; margin-bottom: 8px; }
+@media (max-width: 540px) {
+  .sidebar { flex-wrap: wrap; }
+  .sidebar .brand { width: 100%; margin-bottom: 5px; }
+  .sidebar .nav-item { flex: 1; justify-content: center; }
+}
+#printable-report { display: none; }
+@media print {
+  @page { margin: 15mm; }
+  body { background: white; color: black; font: 10pt/1.5 "Segoe UI", sans-serif; }
+  body > :not(#printable-report) { display: none !important; }
+  #printable-report { display: block; }
+  #printable-report h1 { font-size: 20pt; letter-spacing: 0; }
+  #printable-report h2 { font-size: 13pt; margin: 20px 0 8px; break-after: avoid; }
+  #printable-report table { width: 100%; border-collapse: collapse; margin-bottom: 16px; table-layout: fixed; }
+  #printable-report th, #printable-report td { border: 1px solid #aaa; padding: 6px; text-align: left; overflow-wrap: anywhere; }
+  #printable-report thead { display: table-header-group; }
+  #printable-report tr { break-inside: avoid; }
+}
 .checkbox-label { flex-direction: row; align-items: flex-start; gap: 10px; border: 1px solid #e6e0ef; background: #f7f5fc; border-radius: 7px; padding: 12px; line-height: 1.6; cursor: pointer; }
 .checkbox-label input { width: 17px; height: 17px; min-height: 0; margin: 2px 0 0; accent-color: var(--purple); flex-shrink: 0; }
 .checkbox-label small { display: block; font-size: 10px; color: #81758e; font-weight: 400; margin-top: 3px; }

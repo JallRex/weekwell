@@ -98,6 +98,7 @@
     persist();
     render();
     announce(message);
+    document.dispatchEvent(new Event("weekwell:change"));
   }
 
   function customerTone(customer) {
@@ -189,11 +190,32 @@
   function defaultTimes(day) {
     const visits = week().visits.filter(visit => visit.day === day);
     const latest = visits.reduce((end, visit) => Math.max(end, M.minutes(visit.end)), 0);
-    const start = latest && latest < 1439 ? latest : 480;
-    const end = Math.min(1439, start + (latest ? 120 : 480));
+    const rounded = Math.ceil(latest / 30) * 30;
+    const start = latest && rounded < 1410 ? rounded : 480;
+    const end = Math.min(1410, start + (latest ? 120 : 480));
     const time = mins => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
-    $("visit-start").value = time(start);
-    $("visit-end").value = time(end);
+    setTime("start", time(start));
+    setTime("end", time(end));
+  }
+
+  function setTime(endpoint, time) {
+    const [hour, minute] = time.split(":");
+    const hourSelect = $(`visit-${endpoint}-hour`);
+    const minuteSelect = $(`visit-${endpoint}-minute`);
+    hourSelect.innerHTML = Array.from({ length: 24 }, (_, hour) => {
+      const value = String(hour).padStart(2, "0");
+      return `<option value="${value}">${value}</option>`;
+    }).join("");
+    const minutes = [...new Set(["00", "30", minute])].sort();
+    minuteSelect.innerHTML = minutes.map(value =>
+      `<option value="${value}">${value}${value !== "00" && value !== "30" ? " (saved)" : ""}</option>`
+    ).join("");
+    hourSelect.value = hour;
+    minuteSelect.value = minute;
+  }
+
+  function selectedTime(endpoint) {
+    return `${$(`visit-${endpoint}-hour`).value}:${$(`visit-${endpoint}-minute`).value}`;
   }
 
   function openVisit(day, id = null) {
@@ -210,8 +232,8 @@
     $("visit-customer").value = existing?.customer ?? "";
     $("visit-extra").checked = existing?.extra ?? false;
     if (existing) {
-      $("visit-start").value = existing.start;
-      $("visit-end").value = existing.end;
+      setTime("start", existing.start);
+      setTime("end", existing.end);
     } else {
       defaultTimes(day);
     }
@@ -286,8 +308,8 @@
       id: editingId ?? crypto.randomUUID(),
       customer: $("visit-customer").value.trim(),
       day: Number($("visit-day").value),
-      start: $("visit-start").value,
-      end: $("visit-end").value,
+      start: selectedTime("start"),
+      end: selectedTime("end"),
       extra: $("visit-extra").checked
     };
     const error = M.visitError(visit, week().visits, editingId);
@@ -402,6 +424,139 @@
     if (week().visits.length || Object.keys(week().breaks).length) {
       confirm("Try your example?", "This replaces the selected week's plan with your example: 7.5h, 9.5h, 9.5h, 7.5h, and 3.75h after daily 30-minute breaks. Your weekly goal stays unchanged.", "Load example", applyExample);
     } else applyExample();
+  });
+
+  function exportStatus(message, isError = false) {
+    $("export-status").textContent = message;
+    $("export-status").className = isError ? "form-error" : "field-help";
+  }
+
+  $("export-button").addEventListener("click", () => {
+    exportStatus("");
+    $("restore-file").value = "";
+    $("export-dialog").showModal();
+  });
+
+  $("download-backup").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `weekwell-backup-${M.dateKey(new Date())}.json`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    exportStatus("Backup download requested. Keep the file safe to restore on this or another device.");
+  });
+
+  $("restore-file").addEventListener("change", async () => {
+    const file = $("restore-file").files[0];
+    if (!file) return;
+    if (protectedStorage) {
+      exportStatus("Resolve the saved-data warning or reload after another tab's changes before restoring.", true);
+      $("restore-file").value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      exportStatus("This file is too large. Choose a Weekwell JSON backup smaller than 5 MB.", true);
+      $("restore-file").value = "";
+      return;
+    }
+    $("restore-file").disabled = true;
+    let restored;
+    try {
+      restored = JSON.parse(await file.text());
+    } catch (error) {
+      console.error("Weekwell could not read the backup.", error);
+      exportStatus("Could not read this JSON backup. Your current plans have not changed.", true);
+    } finally {
+      $("restore-file").disabled = false;
+      $("restore-file").value = "";
+    }
+    if (restored === undefined) return;
+    if (!M.validState(restored)) {
+      exportStatus("This is not a valid supported Weekwell backup. Your current plans have not changed.", true);
+      return;
+    }
+    restored.customerTargets ??= [];
+    confirm("Replace all saved plans?",
+      `Restore ${Object.keys(restored.weeks).length} weeks and ${restored.customerTargets.length} customer targets from this backup? All current weeks and preferences will be replaced. Download a backup first if you need to keep them.`,
+      "Restore backup", () => {
+        if (protectedStorage) {
+          exportStatus("Saved plans changed while you were restoring. Reload before trying again.", true);
+          return;
+        }
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(restored));
+        } catch (error) {
+          console.error("Weekwell could not save the restored backup.", error);
+          exportStatus("Restore could not be saved (storage may be blocked or full). Your current plans have not changed.", true);
+          return;
+        }
+        state = restored;
+        $("storage-warning").hidden = true;
+        $("save-status").textContent = "Saved on this device";
+        render();
+        exportStatus("Backup restored and saved on this device.");
+        announce("All weeks and preferences restored from backup.");
+        document.dispatchEvent(new Event("weekwell:change"));
+      });
+  });
+
+  globalThis.WeekwellPlanner = Object.freeze({
+    snapshot: () => JSON.stringify(state),
+    confirm,
+    replace(plan, expectedSnapshot) {
+      if (protectedStorage) throw new Error("Resolve the saved-data warning before loading cloud plans.");
+      if (JSON.stringify(state) !== expectedSnapshot) throw new Error("Local plan changed while loading. Try loading again.");
+      if (!M.validState(plan)) throw new Error("Unsupported cloud plan. Local plans have not changed.");
+      const restored = structuredClone(plan);
+      restored.customerTargets ??= [];
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(restored));
+      } catch (error) {
+        console.error("Weekwell could not save the loaded cloud plan locally.", error);
+        throw new Error("Cloud plan could not be saved locally. Local plans are unchanged.");
+      }
+      state = restored;
+      $("storage-warning").hidden = true;
+      $("save-status").textContent = "Saved on this device";
+      render();
+      announce("Cloud plan loaded and saved on this device.");
+      document.dispatchEvent(new Event("weekwell:change"));
+    }
+  });
+
+  function renderReport() {
+    const stats = M.calculate(week(), state.settings);
+    const customers = M.customerSummary(week(), state.settings, state.customerTargets);
+    const rows = stats.days.flatMap((day, index) => day.visits.map(visit =>
+      `<tr><td>${day.name}, ${M.dateKey(dateAt(index))}</td><td>${escape(visit.customer)}</td><td>${visit.start}</td><td>${visit.end}</td><td>${visit.extra ? "Extra billed" : "Regular"}</td><td>${hours(M.minutes(visit.end) - M.minutes(visit.start))}h</td></tr>`
+    )).join("");
+    $("printable-report").innerHTML = `
+      <h1>Weekwell · Weekly planning record</h1>
+      <p><strong>${escape($("week-label").textContent)}</strong><br>Generated ${escape(new Date().toLocaleString("en-GB", { hour12: false }))}</p>
+      <p>Entered plan only — not independently verified proof of work. Extra assignments may overlap; totals are billed hours, not unique elapsed working time.</p>
+      <p><strong>Total billed after breaks: ${hours(stats.total)}h</strong> · Goal: ${hours(stats.target)}h · Remaining: ${hours(stats.remaining)}h · Above goal: ${hours(stats.overtime)}h<br>Friday goal left: ${hours(stats.fridayLeft)}h · Friday goal time freed: ${hours(stats.fridayFreed)}h (based on Monday–Thursday only)</p>
+      <h2>Customer targets and totals</h2>
+      <table><thead><tr><th>Customer</th><th>Billed after breaks</th><th>Weekly target</th><th>Progress</th></tr></thead><tbody>${customers.length ? customers.map(customer =>
+        `<tr><td>${escape(customer.name)}</td><td>${hours(customer.minutes)}h</td><td>${customer.target === null ? "Not set" : `${hours(customer.target)}h`}</td><td>${customer.target === null ? "No target" : customer.minutes < customer.target ? `${hours(customer.target - customer.minutes)}h still needed` : customer.minutes === customer.target ? "Target reached" : `${hours(customer.minutes - customer.target)}h above target`}</td></tr>`
+      ).join("") : '<tr><td colspan="4">No customers planned or targets set.</td></tr>'}</tbody></table>
+      <h2>Visits · durations before daily breaks</h2>
+      <table><thead><tr><th>Day / date</th><th>Customer</th><th>Start</th><th>End</th><th>Type</th><th>Duration</th></tr></thead><tbody>${rows || '<tr><td colspan="6">No visits planned.</td></tr>'}</tbody></table>
+      <h2>Daily totals and actual break deductions</h2>
+      <table><thead><tr><th>Day</th><th>Gross billed</th><th>Break deducted</th><th>Main customer</th><th>Net billed</th></tr></thead><tbody>${stats.days.map(day =>
+        `<tr><td>${day.name}</td><td>${hours(day.gross)}h</td><td>${day.deduction} min</td><td>${escape(day.breakCustomer ?? "None")}</td><td>${hours(day.net)}h</td></tr>`
+      ).join("")}</tbody></table>
+      <p>Breaks are deducted only from the main customer's regular hours. Extra billed assignments retain their full duration. Recurring targets and preferences are recorded as configured when this report was generated.</p>`;
+  }
+
+  window.addEventListener("beforeprint", renderReport);
+  $("print-report").addEventListener("click", () => {
+    $("export-dialog").close();
+    renderReport();
+    window.print();
   });
 
   window.addEventListener("storage", event => {
