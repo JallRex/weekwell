@@ -74,6 +74,7 @@
         { ...visit(0, "10:00", "11:00", "CustA"), extra: true }], breaks: {} };
       const result = M.calculate(plan, settings);
       equal([result.total, result.breaks, result.days[0].breakCustomer], [510, 30, "CustomerX"]);
+      equal(result.regularTotal, 450);
       const customers = M.customerSummary(plan, settings, [
         { customer: "CustomerX", target: 18.5 }, { customer: "CustA", target: 5 }
       ]);
@@ -85,6 +86,7 @@
       const extra = { ...visit(0, "08:00", "09:00", "Extra"), extra: true };
       const result = calc([extra], { 0: 90 });
       equal([result.total, result.breaks, result.days[0].breakCustomer], [60, 0, null]);
+      equal(result.regularTotal, 0);
     }],
     ["Main customer defaults to most regular hours and may be explicitly overridden", () => {
       const plan = { visits: [visit(0, "08:00", "10:00", "A"), visit(0, "10:00", "16:00", "B"),
@@ -95,6 +97,7 @@
       equal(customers.map(customer => [customer.name, customer.minutes]), [["B", 360], ["A", 90]]);
       plan.breaks[0] = 240;
       equal(M.calculate(plan, settings).breaks, 120);
+      equal(M.calculate(plan, settings).regularTotal, 360);
       equal(M.customerSummary(plan, settings).find(customer => customer.name === "A").minutes, 60);
     }],
     ["Customer targets recur on empty weeks and match names case-insensitively", () => {

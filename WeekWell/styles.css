@@ -74,7 +74,7 @@ h1 > span { color: var(--purple); }
 .week-picker .text-button { margin-left: 4px; }
 .target-pill { display: inline-flex; align-items: center; gap: 6px; background: #efedf5; border-radius: 20px; padding: 7px 11px; font-size: 10px; color: #807592; }
 .target-pill > span:first-child { font-size: 15px; }
-.summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 30px; }
 .summary-card { padding: 20px 21px 18px; background: #fff; border: 1px solid var(--border); border-radius: 11px; min-height: 171px; box-shadow: 0 2px 3px #27234102; }
 .card-label { display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: #7e8093; letter-spacing: .9px; font-weight: 650; gap: 5px; }
 .small-icon { display: inline-flex; align-items: center; justify-content: center; width: 29px; height: 29px; border-radius: 9px; font-size: 18px; flex-shrink: 0; }
@@ -87,20 +87,22 @@ h1 > span { color: var(--purple); }
 .summary-card p { color: #848596; font-size: 10px; margin: 8px 0 0; line-height: 1.6; }
 .progress-track { height: 4px; background: #f0edf8; border-radius: 4px; overflow: hidden; margin-top: 6px; }
 .progress-track > div { background: #9580d8; height: 100%; border-radius: 4px; transition: width .25s; }
+.goal-exceeded { border-color: #a7cfbb; background: linear-gradient(135deg, #fff, #eef8f1); }
+.goal-exceeded .metric, .goal-covered .metric { color: #39765e; }
+.goal-exceeded .progress-track { height: 8px; background: #dceee3; }
+.goal-exceeded .progress-track > div { background: repeating-linear-gradient(110deg, #41846c 0 12px, #79b89a 12px 24px); background-size: 51px 100%; animation: goal-spark 1.8s linear 3; }
+.goal-covered { border-color: #c1ddcd; background: #f4f9f6; }
+@keyframes goal-spark { to { background-position: 51px 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .progress-track > div { transition: none; }
+  .goal-exceeded .progress-track > div { animation: none; }
+}
 .subtle-label { color: #9698a5; font-size: 9px; line-height: 1.6; }
 .summary-card > .subtle-label { display: block; margin-top: 5px; }
 .freedom-card { background: #f4f9f6; border-color: #e0ece5; }
 .freedom-card .metric { color: #39765e; }
 .freedom-card .metric-unit { color: #7ba08c; }
 .freedom-tag { font-family: "DM Sans", "Segoe UI", sans-serif; font-size: 8px; font-weight: 500; letter-spacing: 0; background: #e6f0e9; color: #68907c; padding: 4px 7px; margin-left: 7px; border-radius: 12px; align-self: center; }
-.momentum-panel { display: flex; gap: 13px; align-items: center; background: #eeebf7; border: 1px solid #e6e0f3; border-radius: 9px; padding: 17px 20px; margin: 20px 0 30px; }
-.momentum-icon { display: flex; align-items: center; justify-content: center; border-radius: 9px; width: 37px; height: 37px; flex-shrink: 0; color: #8a73c8; background: #e4dcf4; font-size: 23px; }
-.momentum-copy { flex: 1; }
-.momentum-copy h3 { font-size: 12px; color: #665780; margin: 0 0 5px; font-weight: 750; }
-.momentum-copy p { margin: 0; font-size: 10px; color: #93869f; line-height: 1.7; }
-.friday-forecast { border-left: 1px solid #dcd5e8; padding-left: 23px; text-align: right; flex-shrink: 0; }
-.friday-forecast span { font-size: 8px; letter-spacing: 1px; color: #9889a8; display: block; margin-bottom: 3px; }
-.friday-forecast strong { font-family: "Manrope", "Segoe UI", sans-serif; font-size: 22px; color: #716083; font-weight: 700; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 17px; }
 .section-heading h2 { font-size: 14px; font-weight: 750; margin: 0; letter-spacing: -.3px; }
 .section-heading p { font-size: 10px; color: #9798a6; margin: 5px 0 0; }
@@ -165,11 +167,18 @@ h1 > span { color: var(--purple); }
 .customer-goal-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10px; color: #81768f; margin-top: 5px; }
 .goal-met .customer-goal-footer > span { color: var(--green); }
 .customer-goal-footer .text-button { font-size: 10px; flex-shrink: 0; }
-.how-panel { display: flex; gap: 14px; align-items: flex-start; padding: 23px 10px; }
-.how-icon { color: #a493c7; background: #eee9f6; border-radius: 50%; height: 32px; width: 32px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 20px; }
-.how-panel h3 { font-size: 12px; margin-bottom: 8px; }
-.how-panel p { color: #90909f; font-size: 11px; line-height: 1.9; margin-bottom: 10px; }
-.how-panel div > span { color: #a29bab; font-size: 9px; line-height: 1.7; }
+.billing-panel { background: white; border: 1px solid var(--border); border-radius: 9px; padding: 20px; min-width: 0; }
+.billing-panel h2 { font-size: 14px; margin-bottom: 20px; }
+.billing-panel h3 { font-size: 11px; margin-bottom: 6px; }
+.billing-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.billing-totals strong { font-family: "Manrope", "Segoe UI", sans-serif; font-size: 27px; color: var(--purple-dark); overflow-wrap: anywhere; }
+.billing-totals p { font-size: 10px; color: var(--muted); line-height: 1.7; margin: 5px 0 0; }
+.priority-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; border-top: 1px solid var(--border); padding-top: 16px; }
+.priority-heading strong { color: var(--purple-dark); }
+.priority-list { margin: 0; padding-left: 22px; font-size: 12px; }
+.priority-list li { padding: 9px 0 9px 4px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.priority-list li::marker { color: var(--purple); font-weight: 700; }
+.priority-list strong { display: block; font-size: 11px; color: var(--green); margin-top: 4px; }
 footer { display: flex; justify-content: space-between; align-items: center; color: #aaa7b5; border-top: 1px solid var(--border); margin-top: 28px; padding: 12px 0 18px; font-size: 9px; }
 footer .text-button { font-size: 9px; color: #a399ad; }
 .notice { border: 1px solid #e9c991; background: #fffaed; color: #805c2d; border-radius: 8px; padding: 13px 16px; margin-bottom: 20px; font-size: 12px; line-height: 1.7; }
@@ -216,7 +225,7 @@ input, select { border: 1px solid #dedbe7; border-radius: 6px; padding: 11px; mi
 #confirm-message { color: var(--muted); line-height: 1.8; font-size: 13px; }
 @media (min-width: 1650px) { main { padding: 0 54px; } .day-card { min-height: 330px; padding: 17px 13px 12px; } .visit-customer { font-size: 12px; } .visit-time { font-size: 11px; } .visit-duration, .break-button, .day-note { font-size: 10px; } }
 @media (max-width: 1250px) { .sidebar { width: 195px; padding-left: 13px; padding-right: 13px; } main { margin-left: 195px; padding: 0 25px; } .day-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .day-card { min-height: 270px; } .summary-card { padding: 16px; } .freedom-tag { display: none; } }
-@media (max-width: 950px) { .sidebar { width: 175px; padding-left: 10px; padding-right: 10px; } main { margin-left: 175px; padding: 0 20px; } .brand { font-size: 22px; margin-left: 4px; } .sidebar-note { padding: 17px 12px; } .nav-item { padding: 12px 10px; } .summary-grid { gap: 10px; } .summary-card { padding: 15px 12px; } .metric { font-size: 30px; } .card-label { font-size: 8px; letter-spacing: .5px; } .small-icon { width: 24px; height: 24px; } .metric-note { font-size: 9px; } .bottom-grid { grid-template-columns: 1fr; gap: 0; } .how-panel { padding: 20px 8px 0; } .week-actions { flex-wrap: wrap; } .topbar > span:first-child { font-size: 8px; letter-spacing: 1px; } }
+@media (max-width: 950px) { .sidebar { width: 175px; padding-left: 10px; padding-right: 10px; } main { margin-left: 175px; padding: 0 20px; } .brand { font-size: 22px; margin-left: 4px; } .sidebar-note { padding: 17px 12px; } .nav-item { padding: 12px 10px; } .summary-grid { gap: 10px; } .summary-card { padding: 15px 12px; } .metric { font-size: 30px; } .card-label { font-size: 8px; letter-spacing: .5px; } .small-icon { width: 24px; height: 24px; } .metric-note { font-size: 9px; } .bottom-grid { grid-template-columns: 1fr; gap: 16px; } .week-actions { flex-wrap: wrap; } .topbar > span:first-child { font-size: 8px; letter-spacing: 1px; } }
 @media (max-width: 760px) { .sidebar { position: static; width: 100%; height: auto; padding: 17px 22px; flex-direction: row; align-items: center; border-right: 0; border-bottom: 1px solid var(--border); gap: 8px; } .brand { margin: 0 auto 0 0; font-size: 23px; } .brand-icon { height: 31px; width: 30px; font-size: 25px; } .workspace-label, .sidebar-note, .device-note, .local-status, .nav-item.active { display: none; } .sidebar .nav-item { width: auto; padding: 8px 12px; margin: 0; font-size: 11px; } main { margin: 0; padding: 0 22px; } .topbar { height: 46px; } .page-heading { padding-top: 27px; } .day-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .day-card { min-height: 250px; } h1 { font-size: 30px; } .section-heading { align-items: flex-start; } .legend { justify-content: flex-end; } }
-@media (max-width: 540px) { main { padding: 0 16px; } .sidebar { padding: 15px 16px; } .topbar > span:first-child { letter-spacing: .7px; font-size: 7px; } .today-label { font-size: 9px; } .page-heading { padding: 25px 0; flex-wrap: wrap; } h1 { font-size: 29px; } .page-heading .button { width: 100%; margin-top: 3px; } .page-heading p { font-size: 11px; } .week-toolbar { gap: 13px; margin-bottom: 16px; } .week-picker { width: 100%; gap: 5px; } .week-picker h2 { font-size: 13px; margin: 0 auto; } .week-picker .text-button { margin-left: 1px; padding-left: 5px; padding-right: 2px; } .week-actions { width: 100%; justify-content: space-between; } .summary-grid { grid-template-columns: 1fr 1fr; } .summary-card { min-height: 154px; padding: 14px; } .summary-card.freedom-card { grid-column: 1 / -1; min-height: 130px; } .freedom-card .metric { margin: -3px 0 0; } .freedom-tag { display: inline; } .freedom-card > .subtle-label { margin-top: 3px; } .summary-card p { font-size: 10px; } .card-label { font-size: 8px; } .metric-note { font-size: 8px; margin-left: 2px; } .metric { font-size: 32px; } .momentum-panel { padding: 14px 12px; margin: 16px 0 25px; gap: 9px; flex-wrap: wrap; } .momentum-icon { width: 29px; height: 29px; font-size: 19px; } .momentum-copy h3 { font-size: 11px; line-height: 1.7; } .momentum-copy p { font-size: 10px; } .friday-forecast { width: 100%; padding: 9px 0 0 38px; border-left: 0; border-top: 1px solid #ddd6e9; display: flex; align-items: center; justify-content: space-between; } .friday-forecast span { margin: 0; } .friday-forecast strong { font-size: 18px; } .day-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .day-card { padding: 14px 12px 11px; min-height: 273px; } .day-name, .day-date { font-size: 11px; } .day-total { font-size: 25px; } .day-share { font-size: 10px; } .visit-customer { font-size: 12px; } .visit-time { font-size: 11px; } .visit-duration, .break-button, .day-note { font-size: 10px; } .break-button { min-height: 32px; } .add-visit { min-height: 40px; font-size: 11px; } .section-heading h2 { font-size: 13px; } .legend { font-size: 8px; gap: 7px; max-width: 105px; } .visit-block { padding: 10px 8px; } .freed-slot strong { font-size: 12px; } .freed-slot span { font-size: 10px; } .customer-panel { padding: 17px; } .customer-row { font-size: 12px; } .how-panel p { font-size: 12px; } dialog { padding: 22px; } }
+@media (max-width: 540px) { main { padding: 0 16px; } .sidebar { padding: 15px 16px; } .topbar > span:first-child { letter-spacing: .7px; font-size: 7px; } .today-label { font-size: 9px; } .page-heading { padding: 25px 0; flex-wrap: wrap; } h1 { font-size: 29px; } .page-heading .button { width: 100%; margin-top: 3px; } .page-heading p { font-size: 11px; } .week-toolbar { gap: 13px; margin-bottom: 16px; } .week-picker { width: 100%; gap: 5px; } .week-picker h2 { font-size: 13px; margin: 0 auto; } .week-picker .text-button { margin-left: 1px; padding-left: 5px; padding-right: 2px; } .week-actions { width: 100%; justify-content: space-between; } .summary-grid { grid-template-columns: 1fr 1fr; } .summary-card { min-height: 154px; padding: 14px; } .summary-card.freedom-card { grid-column: 1 / -1; min-height: 130px; } .freedom-card .metric { margin: -3px 0 0; } .freedom-tag { display: inline; } .freedom-card > .subtle-label { margin-top: 3px; } .summary-card p { font-size: 10px; } .card-label { font-size: 8px; } .metric-note { font-size: 8px; margin-left: 2px; } .metric { font-size: 32px; } .day-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .day-card { padding: 14px 12px 11px; min-height: 273px; } .day-name, .day-date { font-size: 11px; } .day-total { font-size: 25px; } .day-share { font-size: 10px; } .visit-customer { font-size: 12px; } .visit-time { font-size: 11px; } .visit-duration, .break-button, .day-note { font-size: 10px; } .break-button { min-height: 32px; } .add-visit { min-height: 40px; font-size: 11px; } .section-heading h2 { font-size: 13px; } .legend { font-size: 8px; gap: 7px; max-width: 105px; } .visit-block { padding: 10px 8px; } .freed-slot strong { font-size: 12px; } .freed-slot span { font-size: 10px; } .customer-panel, .billing-panel { padding: 17px; } .customer-row { font-size: 12px; } dialog { padding: 22px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }

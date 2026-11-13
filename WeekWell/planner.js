@@ -120,10 +120,18 @@
     $("target-label").textContent = `${hours(stats.target)}h weekly goal`;
     $("planned-hours").textContent = hours(stats.total);
     $("planned-goal").textContent = `/ ${hours(stats.target)}h goal`;
+    $("planned-card").classList.toggle("goal-exceeded", stats.overtime > 0);
     $("week-progress").style.width = `${Math.min(100, stats.total / stats.target * 100)}%`;
+    $("week-progress-track").setAttribute("aria-valuemax", stats.target / 60);
+    $("week-progress-track").setAttribute("aria-valuenow", Math.min(stats.total, stats.target) / 60);
+    $("week-progress-track").setAttribute("aria-valuetext",
+      `${hours(stats.total)} of ${hours(stats.target)} hours${stats.overtime > 0 ? `, ${duration(stats.overtime)} above goal` : ""}`);
     $("planned-caption").textContent = stats.total === 0 ? "A fresh week. Make it yours." :
       `${Math.round(stats.total / stats.target * 100)}% of your goal · ${duration(stats.breaks)} unpaid breaks`;
-    $("remaining-hours").textContent = hours(stats.remaining);
+    $("remaining-hours").textContent = hours(stats.overtime || stats.remaining);
+    $("remaining-label").textContent = stats.overtime > 0 ? "ABOVE YOUR GOAL" :
+      stats.remaining === 0 ? "WEEKLY GOAL REACHED" : "LEFT TO YOUR GOAL";
+    $("remaining-card").classList.toggle("goal-covered", stats.remaining === 0);
     $("remaining-caption").textContent = stats.overtime > 0 ?
       `${duration(stats.overtime)} above your weekly goal. Nicely planned.` :
       stats.remaining === 0 ? "Weekly goal covered. Your time, your choice." : "Across the week, at your own pace.";
@@ -131,15 +139,7 @@
     $("freed-caption").textContent = stats.fridayFreed > 0 ?
       `${duration(stats.fridayFreed)} less needed on Friday, thanks to Mon–Thu.` :
       "Plan extra hours Mon–Thu to open up Friday.";
-    $("friday-left").textContent = `${hours(stats.fridayLeft)}h`;
-    $("forecast-title").textContent = stats.fridayFreed > 0 ?
-      `You've made ${duration(stats.fridayFreed)} of breathing room on Friday.` :
-      "A lighter Friday starts earlier in the week.";
-    $("forecast-caption").textContent = stats.total === 0 ?
-      "Your Monday–Thursday hours will show how much of Friday you can free up." :
-      `After Mon–Thu, ${duration(stats.fridayLeft)} remains to hit your goal. Friday currently has ${duration(stats.days[4].net)} planned. Includes extra billed hours, not just elapsed time. Weekend hours are excluded from this forecast.`;
     $("freedom-tag").textContent = stats.fridayFreed >= stats.dailyShare ? "Friday goal covered" : "Your breathing room";
-    $("break-explainer").textContent = `${state.settings.breakMinutes} min weekday break from the main customer's regular hours only. Extra billed assignments count in full, even when overlapping. No automatic weekend break.`;
 
     $("day-grid").innerHTML = stats.days.map((day, index) => {
       const date = dateAt(index);
@@ -173,6 +173,15 @@
     }).join("");
 
     const customers = M.customerSummary(plan, state.settings, state.customerTargets);
+    $("total-billed-hours").textContent = `${hours(stats.total)}h`;
+    $("expected-hours").textContent = `${hours(stats.regularTotal)}h`;
+    const priorities = customers.filter(customer => customer.target !== null && customer.minutes < customer.target)
+      .sort((a, b) => (b.target - b.minutes) - (a.target - a.minutes) || a.name.localeCompare(b.name));
+    $("customer-hours-left").textContent = duration(priorities.reduce((sum, customer) => sum + customer.target - customer.minutes, 0));
+    $("customer-priorities").innerHTML = priorities.length ? `<ol class="priority-list">${priorities.map(customer =>
+      `<li><span>${escape(customer.name)}</span><strong>${duration(customer.target - customer.minutes)} left</strong></li>`
+    ).join("")}</ol>` : `<p class="customer-empty">${state.customerTargets.length ?
+      "All customer targets covered. Nicely planned!" : "Add customer targets to see who needs your time next."}</p>`;
     $("customer-breakdown").innerHTML = customers.length ? customers.map(customer => {
       const hasTarget = customer.target !== null;
       const remaining = hasTarget ? Math.max(0, customer.target - customer.minutes) : 0;

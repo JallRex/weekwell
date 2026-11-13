@@ -51,12 +51,14 @@
     });
     const target = settings.target * 60;
     const total = days.reduce((sum, day) => sum + day.net, 0);
+    const regularTotal = days.reduce((sum, day) => sum +
+      day.regularCustomers.reduce((minutes, customer) => minutes + customer.minutes, 0) - day.deduction, 0);
     const early = days.slice(0, 4).reduce((sum, day) => sum + day.net, 0);
     const dailyShare = target / 5;
     const fridayLeft = Math.max(0, target - early);
     const fridayFreed = Math.min(dailyShare, Math.max(0, dailyShare - fridayLeft));
     return {
-      days, total, target, dailyShare, fridayLeft, fridayFreed,
+      days, total, regularTotal, target, dailyShare, fridayLeft, fridayFreed,
       remaining: Math.max(0, target - total),
       overtime: Math.max(0, total - target),
       breaks: days.reduce((sum, day) => sum + day.deduction, 0)
