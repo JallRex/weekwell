@@ -1,7 +1,26 @@
 # Weekwell
 
-[Open the app](https://jallrex.github.io/weekwell/).
+**Your week, a little lighter.**
 
-The app source is in [WeekWell](WeekWell/). See its [README](WeekWell/README.md) for planning rules, backups, printable reports, and private Supabase setup.
+Weekwell is a personal customer-hours planner that makes it easier to balance commitments, reach weekly targets, and see where there is room to breathe.
 
-GitHub Pages deploys `main` from `/ (root)`. The root entry page redirects to `WeekWell/`, preserving the original site URL. Saved browser plans remain available because storage uses the same site origin and key.
+[Open Weekwell](https://jallrex.github.io/weekwell/)
+
+## A clearer picture of your week
+
+- Plan customer visits across all seven days with 24-hour time selectors.
+- Give each customer a recurring weekly target and see who needs your time next.
+- Track regular visits and extra billed assignments, including overlapping billing for different customers.
+- See billed hours, in-person expected hours, and how far you are below or above your weekly goal.
+- Visualize how earlier effort can reduce Friday's remaining goal obligations.
+- Keep JSON backups and printable weekly reports.
+
+## Personal plans, not public data
+
+The website and its source code are public. Your entered plans are not published to this repository: they save automatically in your browser on your device.
+
+Private Supabase cloud saving is available to the configured owner through explicit **Load / Save** actions. It is not automatic sync, and using the planner locally does not require an account. Clearing browser data can remove local plans, so cloud copies or downloaded backups remain important.
+
+Weekwell records what you plan, not independently verified hours worked.
+
+[More about the app, its totals, and privacy](WeekWell/README.md)

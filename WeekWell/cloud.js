@@ -27,7 +27,25 @@
 
   async function getClient() {
     if (!clientPromise) {
-      clientPromise = import("https://esm.sh/@supabase/supabase-js@2.119.0").then(({ createClient }) => {
+      clientPromise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js";
+        script.integrity = "sha384-uteMfOloLDGt042uDz+xHGF3ym63/WQ6rFq7murQRG8Ih7QrXGEGNtWd8688sb4O";
+        script.crossOrigin = "anonymous";
+        script.onload = () => {
+          script.remove();
+          if (typeof globalThis.supabase?.createClient !== "function") {
+            reject(new Error("The verified cloud SDK did not initialize. Local plans are unchanged."));
+            return;
+          }
+          resolve(globalThis.supabase);
+        };
+        script.onerror = () => {
+          script.remove();
+          reject(new Error("Could not load and verify the cloud SDK. Check your connection and retry. Local plans are unchanged."));
+        };
+        document.head.append(script);
+      }).then(({ createClient }) => {
         client = createClient(
           "https://txhktkxgznuiksnlixkr.supabase.co",
           "sb_publishable_wDD1jEXrvd40qIAfDfkvbQ_qaNPkylC",
