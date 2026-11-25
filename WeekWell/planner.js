@@ -15,6 +15,8 @@
   const formatDate = (date, options) => date.toLocaleDateString("en-GB", options);
   const emptyWeek = () => ({ visits: [], breaks: {} });
   let protectedStorage = false;
+  let localDurable = true;
+  let unreadableRaw = null;
   let state = { version: 1, settings: { ...M.DEFAULT_SETTINGS }, customerTargets: [], weeks: {} };
   let currentWeek = M.mondayKey(new Date());
   let selectedMonth = M.dateKey(new Date()).slice(0, 7);
@@ -35,7 +37,7 @@
         "Replace saved data?",
         "Your unreadable saved data will be replaced with the plan currently on screen. This cannot be undone.",
         "Replace saved data",
-        () => { protectedStorage = false; persist(); }
+        () => { protectedStorage = false; unreadableRaw = null; persist(); }
       ));
       warning.append(button);
     }
@@ -48,6 +50,7 @@
     try {
       raw = localStorage.getItem(STORAGE_KEY);
     } catch (error) {
+      localDurable = false;
       console.error("Weekwell could not read browser storage.", error);
       storageWarning("Browser storage is unavailable. You can plan here, but changes will be lost when you close or reload this page.");
       return;
@@ -59,12 +62,16 @@
     } catch (error) {
       console.error("Weekwell saved data is unreadable.", error);
       protectedStorage = true;
+      localDurable = false;
+      unreadableRaw = raw;
       storageWarning("Saved plans could not be read. They have not been overwritten. New edits are temporary until you choose to replace the saved data.", true);
       return;
     }
     if (!M.validState(saved)) {
       console.error("Weekwell saved data failed validation.");
       protectedStorage = true;
+      localDurable = false;
+      unreadableRaw = raw;
       storageWarning("Saved plans are in an unsupported or invalid format. They have not been overwritten. New edits are temporary until you choose to replace the saved data.", true);
       return;
     }
@@ -73,12 +80,14 @@
   }
 
   function persist() {
-    if (protectedStorage) return;
+    if (protectedStorage) { localDurable = false; return; }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localDurable = true;
       $("storage-warning").hidden = true;
       $("save-status").textContent = "Saved on this device";
     } catch (error) {
+      localDurable = false;
       console.error("Weekwell could not save the plan.", error);
       storageWarning("Your latest changes could not be saved to this browser (storage may be blocked or full). Keep this page open to retain them and enable browser storage before editing again.");
     }
@@ -613,6 +622,7 @@
           return;
         }
         state = restored;
+        localDurable = true;
         $("storage-warning").hidden = true;
         $("save-status").textContent = "Saved on this device";
         render();
@@ -624,7 +634,27 @@
 
   globalThis.WeekwellPlanner = Object.freeze({
     snapshot: () => JSON.stringify(state),
+    backup: () => unreadableRaw ?? JSON.stringify(state, null, 2),
+    hasUnreadableBackup: () => unreadableRaw !== null,
+    isProtected: () => protectedStorage,
+    isLocallySaved: () => localDurable,
     confirm,
+    recoverUnreadable(plan) {
+      if (unreadableRaw === null || localStorage.getItem(STORAGE_KEY) !== unreadableRaw) {
+        throw new Error("The unreadable data changed. Reload before recovery.");
+      }
+      if (!M.validState(plan)) throw new Error("The cloud plan is invalid. The unreadable data was not replaced.");
+      const restored = structuredClone(plan);
+      restored.customerTargets ??= [];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(restored));
+      state = restored;
+      unreadableRaw = null;
+      protectedStorage = false;
+      localDurable = true;
+      $("storage-warning").hidden = true;
+      render();
+      announce("Unreadable local data replaced with the cloud plan.");
+    },
     replace(plan, expectedSnapshot) {
       if (protectedStorage) throw new Error("Resolve the saved-data warning before loading cloud plans.");
       if (JSON.stringify(state) !== expectedSnapshot) throw new Error("Local plan changed while loading. Try loading again.");
@@ -638,6 +668,7 @@
         throw new Error("Cloud plan could not be saved locally. Local plans are unchanged.");
       }
       state = restored;
+      localDurable = true;
       $("storage-warning").hidden = true;
       $("save-status").textContent = "Saved on this device";
       render();
@@ -680,7 +711,9 @@
   window.addEventListener("storage", event => {
     if (event.storageArea === localStorage && (event.key === STORAGE_KEY || event.key === null)) {
       protectedStorage = true;
+      localDurable = false;
       storageWarning("Saved plans changed in another tab. Reload this page to load them before making more edits. This tab will not overwrite the newer saved plan.");
+      document.dispatchEvent(new Event("weekwell:storage-conflict"));
     }
   });
 

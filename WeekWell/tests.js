@@ -183,6 +183,49 @@
       equal(M.mondayKey(new Date(2027, 0, 1)), "2026-12-28");
       equal(M.mondayKey(new Date(2026, 2, 29)), "2026-03-23");
     }],
+    ["Sync merges independent visits in the same week", () => {
+      const base = { version: 1, settings, customerTargets: [], weeks: {} };
+      const local = structuredClone(base);
+      const cloud = structuredClone(base);
+      local.weeks["2026-11-09"] = { visits: [visit(0, "08:00", "12:00", "A")], breaks: {} };
+      cloud.weeks["2026-11-09"] = { visits: [visit(1, "08:00", "12:00", "B")], breaks: {} };
+      const result = globalThis.WeekwellMerge.merge(base, local, cloud);
+      equal(result.conflicts.length, 0);
+      equal(result.plan.weeks["2026-11-09"].visits.length, 2);
+      equal(M.validState(result.plan), true);
+    }],
+    ["Sync exposes conflicting edits and preserves deletion choices", () => {
+      const base = { version: 1, settings, customerTargets: [],
+        weeks: { "2026-11-09": { visits: [visit(0, "08:00", "12:00")], breaks: {} } } };
+      const local = structuredClone(base);
+      const cloud = structuredClone(base);
+      local.weeks["2026-11-09"].visits = [];
+      cloud.weeks["2026-11-09"].visits[0].end = "13:00";
+      const result = globalThis.WeekwellMerge.merge(base, local, cloud);
+      equal(result.conflicts.length, 1);
+      equal(result.conflicts[0].localDeleted, true);
+      const path = result.conflicts[0].path;
+      const resolved = globalThis.WeekwellMerge.merge(base, local, cloud, { [path]: "cloud" });
+      equal(resolved.conflicts.length, 0);
+      equal(resolved.plan.weeks["2026-11-09"].visits[0].end, "13:00");
+    }],
+    ["Sync combines different fields and asks about conflicting values", () => {
+      const base = { version: 1, settings, customerTargets: [],
+        weeks: { "2026-11-09": { visits: [visit(0, "08:00", "12:00")], breaks: {} } } };
+      const local = structuredClone(base);
+      const cloud = structuredClone(base);
+      local.weeks["2026-11-09"].visits[0].description = "Note";
+      cloud.weeks["2026-11-09"].visits[0].end = "13:00";
+      let result = globalThis.WeekwellMerge.merge(base, local, cloud);
+      equal(result.conflicts.length, 0);
+      equal([result.plan.weeks["2026-11-09"].visits[0].description,
+        result.plan.weeks["2026-11-09"].visits[0].end], ["Note", "13:00"]);
+      local.weeks["2026-11-09"].visits[0].end = "14:00";
+      result = globalThis.WeekwellMerge.merge(base, local, cloud);
+      equal(result.conflicts.length, 1);
+      const resolved = globalThis.WeekwellMerge.merge(base, local, cloud, { [result.conflicts[0].path]: "cloud" });
+      equal([resolved.conflicts.length, resolved.plan.weeks["2026-11-09"].visits[0].end], [0, "13:00"]);
+    }],
     ["Stored plans reject corrupt data, duplicates, impossible dates, and overlaps", () => {
       const good = { version: 1, settings, weeks: { "2026-11-09": { visits: [visit(0, "08:00", "16:00")], breaks: { 0: 0 } } } };
       equal(M.validState(good), true);

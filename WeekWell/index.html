@@ -9,6 +9,7 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%237360d0'/%3E%3Cpath d='m9 14 5 13 6-10 6 10 5-13' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./styles.css">
   <script src="./planner-math.js" defer></script>
+  <script src="./sync-merge.js" defer></script>
   <script src="./planner.js" defer></script>
   <script src="./cloud.js" defer></script>
 </head>
@@ -17,8 +18,8 @@
     <a class="brand" href="./" aria-label="Weekwell home"><span class="brand-icon" aria-hidden="true">w</span>weekwell<span class="brand-dot">.</span></a>
     <div class="workspace-label">YOUR WORKSPACE</div>
     <a class="nav-item active" href="#planner"><span aria-hidden="true">▦</span> Weekly planner <span class="nav-dot"></span></a>
-    <button class="nav-item" id="settings-button"><span aria-hidden="true">⚙</span> Preferences</button>
-    <button class="nav-item" id="cloud-button">Sign in / cloud</button>
+    <button class="nav-item" id="settings-button" inert><span aria-hidden="true">⚙</span> Preferences</button>
+    <button class="nav-item" id="cloud-button">Sign in / sync</button>
     <div class="sidebar-note">
       <span class="note-spark" aria-hidden="true">✧</span>
       <h3>A little planning.<br>A little more freedom.</h3>
@@ -26,10 +27,10 @@
       <div class="note-illustration" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
     </div>
     <div class="local-status"><span class="status-dot"></span><span id="save-status">Saved on this device</span></div>
-    <p class="device-note">Local by default. Cloud saving is optional.<br>Use cloud Load / Save to move between devices.</p>
+    <p class="device-note">Changes sync to your private cloud plan.</p>
   </aside>
 
-  <main id="planner">
+  <main id="planner" inert>
     <header class="topbar"><span>WORK LESS SCATTERED. PLAN MORE INTENTIONALLY.</span><span class="today-label" id="today-label"></span></header>
     <section class="page-heading">
       <div><div class="eyebrow">A CLEARER WEEK STARTS HERE</div><h1>Make room for Friday<span>.</span></h1><p>Your customers, your hours, and a little breathing room.</p></div>
@@ -145,19 +146,38 @@
   <section id="printable-report" aria-label="Weekly planning report"></section>
 
   <dialog id="cloud-dialog" aria-labelledby="cloud-title">
-    <div class="dialog-heading"><h2 id="cloud-title">Private cloud plans</h2><button type="button" class="icon-button close-dialog" aria-label="Close">×</button></div>
-    <p class="field-help">Optional Supabase saving for your account only. Local plans stay on this device. Cloud Load / Save replaces the entire plan, with checks to prevent stale overwrites. No automatic sync.</p>
+    <div class="dialog-heading"><h2 id="cloud-title">Private cloud sync</h2><button type="button" class="icon-button close-dialog" id="cloud-close" aria-label="Close">×</button></div>
+    <p class="field-help">Sign in and connect before editing. Changes sync automatically; editing is unavailable while disconnected.</p>
     <form id="cloud-login">
       <label>Email<input id="cloud-email" type="email" autocomplete="username" required></label>
       <label>Password<input id="cloud-password" type="password" autocomplete="current-password" required></label>
       <button class="button primary" type="submit">Sign in</button>
-      <p class="field-help">No public sign-ups. Sign in with the user you created in Supabase. Sign-in lasts for this page session; reloading requires sign-in again.</p>
+      <p class="field-help">Your session is remembered on this device. Only sign in on devices you trust.</p>
     </form>
     <div id="cloud-actions" hidden>
-      <div class="dialog-actions"><button class="button secondary" id="cloud-load">Load cloud plan</button><button class="button primary" id="cloud-save">Save to cloud</button></div>
+      <button class="button secondary" id="cloud-history">Show recent versions</button>
+      <div id="cloud-history-list"></div>
       <button class="text-button" id="cloud-signout">Sign out</button>
     </div>
-    <p id="cloud-status" class="field-help" role="status" aria-live="polite">Not signed in. Nothing is uploaded until you choose Save to cloud.</p>
+    <div id="cloud-difference" hidden>
+      <p class="field-help">Loading the cloud replaces this device's plan. Download a local backup first, or merge when available.</p>
+      <button class="button secondary" id="cloud-use-remote">Use cloud plan</button>
+      <button class="button primary" id="cloud-merge">Merge plans</button>
+    </div>
+    <div id="cloud-conflicts" hidden>
+      <h3>Choose a version for each conflict</h3>
+      <div id="cloud-conflict-list"></div>
+      <button class="button primary" id="cloud-resolve">Apply choices</button>
+    </div>
+    <div id="cloud-overlaps" hidden>
+      <h3>Choose which overlapping visits to keep</h3>
+      <div id="cloud-overlap-list"></div>
+      <button class="button primary" id="cloud-resolve-overlaps">Apply choices</button>
+    </div>
+    <button class="button secondary" id="cloud-retry">Sync / retry</button>
+    <button class="button secondary" id="cloud-export-local">Download local backup</button>
+    <button class="button secondary" id="cloud-recover-local" hidden>Replace unreadable local data</button>
+    <p id="cloud-status" class="field-help" role="status" aria-live="polite">Connecting to your cloud plan…</p>
   </dialog>
 
   <dialog id="customer-dialog" aria-labelledby="customer-title">

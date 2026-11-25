@@ -19,7 +19,7 @@ Weekwell is a personal customer-hours planner that makes it easier to balance co
 
 The website and its source code are public. Your entered plans are not published to this repository: they save automatically in your browser on your device.
 
-Private Supabase cloud saving is available to the configured owner through explicit **Load / Save** actions. It is not automatic sync, and using the planner locally does not require an account. Clearing browser data can remove local plans, so cloud copies or downloaded backups remain important.
+The configured owner signs in to use private Supabase cloud sync. Changes save automatically, editing requires a connection, and recent revisions can be restored. Keep downloaded backups as an additional safeguard.
 
 Weekwell records what you plan, not independently verified hours worked.
 

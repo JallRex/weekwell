@@ -35,13 +35,17 @@ Breaks are deducted only from the main customer's regular hours, never from extr
 
 **For example:** an `08:00-16:00` regular visit and another customer's `10:00-11:00` extra assignment produce **8.5 billed hours** and **7.5 expected hours** after a 30-minute break. Billed hours are not unique elapsed working time.
 
-## Local first, with optional private cloud saving
+## Private cloud sync
 
-Plans save automatically in browser storage and normally survive closing the browser. They belong to that browser and site origin, not to the public repository. Private browsing, clearing site data, or switching devices can leave that local copy unavailable.
+Sign in to the configured owner account before editing. The app checks and loads the cloud plan on opening, then saves changes automatically. Editing is blocked when the connection or sync is unavailable; a change made just as the connection fails is preserved locally and must be synced before further editing. The sync status reports whether changes are saved.
 
-The optional Supabase connection is restricted to the configured owner. Cloud **Load / Save** actions transfer the entire saved plan, including all weeks and preferences. They are manual replacements, not automatic synchronization or merging. Confirmation prompts and revision checks help prevent accidental or stale overwrites.
+When devices have changed different items, Weekwell merges them where possible. If the same information differs, choose a version for each conflict. The app will not save a merged plan with invalid visits, such as overlapping regular assignments. If an existing local plan differs from the cloud plan and has no shared sync baseline, you can back it up, load the cloud, or merge; without a baseline the merge cannot infer past deletions.
 
-Cloud sign-in lasts for the current page session. Passwords and authentication tokens are not included in planner backups or saved in browser local storage by the app. Signing out leaves local plans on the device.
+The cloud retains the latest 100 saved revisions, including the current plan; an older version can be restored as a new revision. History contains complete plans, including descriptions and days off, and older versions are removed as the limit is reached. A browser copy and sync baseline are stored locally. Clearing browser data removes these local copies, but not a successfully saved cloud plan.
+
+Sessions are remembered in browser storage on that device, so sign in only on trusted devices and sign out on shared devices. Passwords and authentication tokens are not included in planner backups. Signing out leaves the locally saved plan on the device.
+
+To prevent competing tabs from overwriting the same browser copy, only one Weekwell tab per browser profile can edit or sync at a time. Close the other tab and retry if prompted. This requires a current browser with Web Locks support.
 
 ## Backups and weekly records
 
@@ -49,12 +53,12 @@ JSON backups preserve all weeks, project dates and allocations, descriptions, da
 
 Printable weekly records include visits, customer progress, break deductions, totals, and Friday calculations, with browser PDF support. They are snapshots of entered plans, **not independently verified proof of work**.
 
-Backups, cloud plans, and reports can contain customer names, descriptions, schedules, and sensitive day-off information, so they should be treated as private documents. Cloud saves remain manual.
+Backups, cloud plans, revision history, and reports can contain customer names, descriptions, schedules, and sensitive day-off information, so they should be treated as private documents.
 
 ## Public code, private access
 
-Weekwell is a static HTML, CSS, and JavaScript app hosted on GitHub Pages. Local planning needs no account or backend. The public Supabase URL and publishable key are browser configuration, not administrator credentials; cloud privacy depends on the deployed owner checks, row-level security, and restricted database permissions.
+Weekwell is a static HTML, CSS, and JavaScript app hosted on GitHub Pages. Planning requires an account and a working backend connection. The public Supabase URL and publishable key are browser configuration, not administrator credentials; cloud privacy depends on the deployed owner checks, row-level security, and restricted database permissions.
 
-The cloud SDK loads only when signing in. Its version is pinned, and the browser checks a SHA-384 integrity hash before executing it. Network failures or an integrity mismatch block cloud sign-in without preventing local planning. Optional typography is fetched from Google Fonts, with system-font fallbacks.
+The cloud SDK version is pinned, and the browser checks a SHA-384 integrity hash before executing it. Network failures or an integrity mismatch block sign-in and editing. Optional typography is fetched from Google Fonts, with system-font fallbacks.
 
-The repository includes [calculation tests](tests.html), the [one-time backend schema](supabase/setup.sql), and [transactional backend checks](supabase/verify.sql). The schema is not a rerunnable migration; the verification script rolls back its test writes. Source code and these checks do not by themselves establish the configuration of a live Supabase project.
+The repository includes [calculation and merge tests](tests.html), the [one-time backend schema](supabase/setup.sql), the [history migration](supabase/sync_history.sql), and [transactional backend checks](supabase/verify.sql). The setup and migration are not rerunnable; the verification script rolls back its test writes. Source code and these checks do not by themselves establish the configuration of a live Supabase project.
