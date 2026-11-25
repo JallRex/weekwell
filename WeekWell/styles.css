@@ -183,8 +183,9 @@ h1 > span { color: var(--purple); }
 .priority-list li { padding: 9px 0 9px 4px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
 .priority-list li::marker { color: var(--purple); font-weight: 700; }
 .priority-list strong { display: block; font-size: 11px; color: var(--green); margin-top: 4px; }
-.monthly-panel { background: white; border: 1px solid var(--border); border-radius: 9px; padding: 20px; margin-top: 20px; }
-.monthly-panel .section-heading { flex-wrap: wrap; }
+.monthly-section { margin-top: 25px; }
+.month-heading { flex-wrap: wrap; }
+.monthly-grid { margin-top: 0; }
 .month-totals { color: var(--purple-dark); font-size: 12px; line-height: 1.7; margin-bottom: 6px; }
 footer { display: flex; justify-content: space-between; align-items: center; color: #aaa7b5; border-top: 1px solid var(--border); margin-top: 28px; padding: 12px 0 18px; font-size: 9px; }
 footer .text-button { font-size: 9px; color: #a399ad; }

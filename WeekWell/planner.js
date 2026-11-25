@@ -17,7 +17,7 @@
   let protectedStorage = false;
   let state = { version: 1, settings: { ...M.DEFAULT_SETTINGS }, customerTargets: [], weeks: {} };
   let currentWeek = M.mondayKey(new Date());
-  let currentMonth = M.dateKey(new Date()).slice(0, 7);
+  let selectedMonth = M.dateKey(new Date()).slice(0, 7);
   let editingId = null;
   let editingCustomerKey = null;
   let breakDay = 0;
@@ -208,11 +208,19 @@
   }
 
   function renderMonth() {
-    const month = M.monthlySummary(state, currentMonth);
-    const date = M.fromKey(`${currentMonth}-01`);
+    const month = M.monthlySummary(state, selectedMonth);
+    const date = M.fromKey(`${selectedMonth}-01`);
     $("month-label").textContent = formatDate(date, { month: "long", year: "numeric" });
+    $("month-billed-hours").textContent = `${hours(month.total)}h`;
+    $("month-expected-hours").textContent = `${hours(month.regularTotal)}h`;
     $("month-totals").textContent = `${month.weekdays} weekdays · Overall goal ${hours(month.baseTarget)}h${month.timeOff ? ` · Time off ${duration(month.timeOff)}${month.adjustment ? ` · Goal adjustment −${duration(month.adjustment)} = ${hours(month.target)}h` : " (goal unchanged)"}` : ""}`;
-    $("month-customer-totals").textContent = `Customer estimates: ${hours(month.customers.reduce((sum, customer) => sum + (customer.target ?? 0), 0))}h · Planned billed: ${hours(month.customers.reduce((sum, customer) => sum + customer.minutes, 0))}h`;
+    $("month-customer-totals").textContent = `Customer estimates: ${hours(month.customers.reduce((sum, customer) => sum + (customer.target ?? 0), 0))}h`;
+    const priorities = month.customers.filter(customer => customer.target > 0 && customer.minutes < customer.target);
+    $("month-customer-hours-left").textContent = duration(priorities.reduce((sum, customer) => sum + customer.target - customer.minutes, 0));
+    $("month-priorities").innerHTML = priorities.length ? `<ol class="priority-list">${priorities.map(customer =>
+      `<li><span>${escape(customer.name)}</span><strong>${duration(customer.target - customer.minutes)} left</strong></li>`
+    ).join("")}</ol>` : `<p class="customer-empty">${month.customers.some(customer => customer.target > 0) ?
+      "All active customer targets covered. Nicely planned!" : "Add customer targets or choose dates active this month."}</p>`;
     $("month-customers").innerHTML = month.customers.length ? month.customers.map(customer => {
       const active = customer.configured && customer.target > 0;
       const remaining = active ? Math.max(0, customer.target - customer.minutes) : 0;
@@ -498,14 +506,19 @@
   $("previous-week").addEventListener("click", () => changeWeek(-1));
   $("next-week").addEventListener("click", () => changeWeek(1));
   function changeMonth(offset) {
-    const date = M.fromKey(`${currentMonth}-01`);
+    const date = M.fromKey(`${selectedMonth}-01`);
     date.setMonth(date.getMonth() + offset);
-    currentMonth = M.dateKey(date).slice(0, 7);
+    selectedMonth = M.dateKey(date).slice(0, 7);
     renderMonth();
     announce(`Showing ${$("month-label").textContent}`);
   }
   $("previous-month").addEventListener("click", () => changeMonth(-1));
   $("next-month").addEventListener("click", () => changeMonth(1));
+  $("this-month").addEventListener("click", () => {
+    selectedMonth = M.dateKey(new Date()).slice(0, 7);
+    renderMonth();
+    announce(`Showing ${$("month-label").textContent}`);
+  });
   $("this-week").addEventListener("click", () => { currentWeek = M.mondayKey(new Date()); render(); });
   $("add-visit-top").addEventListener("click", () => openVisit(currentWeek === M.mondayKey(new Date()) ? (new Date().getDay() + 6) % 7 : 0));
   $("clear-week").addEventListener("click", () => confirm(

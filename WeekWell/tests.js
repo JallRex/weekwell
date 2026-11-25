@@ -135,6 +135,7 @@
       } };
       const november = M.monthlySummary(state, "2026-11");
       const december = M.monthlySummary(state, "2026-12");
+      equal([november.total, november.regularTotal, december.total, december.regularTotal], [450, 450, 510, 450]);
       equal(november.customers.find(customer => customer.name === "A").minutes, 450);
       equal(december.customers.map(customer => [customer.name, customer.minutes]), [["A", 450], ["B", 60]]);
     }],

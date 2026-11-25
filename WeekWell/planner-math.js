@@ -115,6 +115,8 @@
     let weekdays = 0;
     let timeOff = 0;
     let adjustment = 0;
+    let total = 0;
+    let regularTotal = 0;
     for (const date = new Date(first); date < next; date.setDate(date.getDate() + 1)) {
       const key = dateKey(date);
       const day = (date.getDay() + 6) % 7;
@@ -133,6 +135,8 @@
         if (off.reduceGoal) adjustment += state.settings.target * 60 / 5;
       }
       const stats = calculate(week, state.settings).days[day];
+      total += stats.net;
+      regularTotal += stats.regularCustomers.reduce((sum, customer) => sum + customer.minutes, 0) - stats.deduction;
       for (const visit of stats.visits) {
         const customer = customerKey(visit.customer);
         const entry = customers.get(customer) ?? { name: visit.customer, target: null, configured: false, minutes: 0 };
@@ -142,7 +146,7 @@
       if (stats.deduction) customers.get(customerKey(stats.breakCustomer)).minutes -= stats.deduction;
     }
     const baseTarget = weekdays * state.settings.target * 60 / 5;
-    return { weekdays, timeOff, adjustment, baseTarget, target: Math.max(0, baseTarget - adjustment),
+    return { weekdays, timeOff, adjustment, baseTarget, target: Math.max(0, baseTarget - adjustment), total, regularTotal,
       customers: [...customers.values()].sort((a, b) =>
         Math.max(0, (b.target ?? 0) - b.minutes) - Math.max(0, (a.target ?? 0) - a.minutes) || a.name.localeCompare(b.name)) };
   }

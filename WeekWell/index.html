@@ -83,15 +83,30 @@
         <div id="customer-priorities"></div>
       </article>
     </section>
-    <section class="monthly-panel" aria-labelledby="month-heading">
-      <div class="section-heading">
-        <div><h2 id="month-heading">Monthly overview</h2><p>Customer estimates use active weekdays; planned visits count on their calendar dates.</p></div>
-        <div class="week-picker"><button class="icon-button" id="previous-month" aria-label="Previous month">‹</button><h2 id="month-label"></h2><button class="icon-button" id="next-month" aria-label="Next month">›</button></div>
+    <section class="monthly-section" aria-labelledby="month-heading">
+      <div class="section-heading month-heading">
+        <div><h2 id="month-heading">Monthly overview</h2><p>Visits count on their calendar dates, even in split weeks.</p></div>
+        <div class="week-picker" role="group" aria-label="Month navigation"><button class="icon-button" id="previous-month" aria-label="Previous month">‹</button><h2 id="month-label"></h2><button class="icon-button" id="next-month" aria-label="Next month">›</button><button class="text-button" id="this-month">This month</button></div>
       </div>
-      <p class="month-totals" id="month-totals"></p>
-      <p class="month-totals" id="month-customer-totals"></p>
-      <p class="field-help">Time off is shown separately. Only days marked “reduce overall goal” adjust the overall goal; customer estimates remain unchanged.</p>
-      <div id="month-customers"></div>
+      <div class="bottom-grid monthly-grid">
+        <article class="customer-panel" aria-labelledby="month-customers-heading">
+          <div class="section-heading"><div><h2 id="month-customers-heading">Monthly customer targets</h2><p>Largest remaining gaps first · includes every customer</p></div></div>
+          <div id="month-customers"></div>
+        </article>
+        <article class="billing-panel" aria-labelledby="month-hours-heading">
+          <h2 id="month-hours-heading">Your month in hours</h2>
+          <div class="billing-totals">
+            <div><h3>Total billed hours</h3><strong id="month-billed-hours">0h</strong><p>All regular + extra billed hours</p></div>
+            <div><h3>Expected hours</h3><strong id="month-expected-hours">0h</strong><p>In-person hours only · no extra billing</p></div>
+          </div>
+          <p class="field-help">Selected calendar month · unpaid breaks deducted from regular hours. Estimates use current targets and preferences.</p>
+          <p class="month-totals" id="month-totals"></p>
+          <p class="month-totals" id="month-customer-totals"></p>
+          <div class="priority-heading"><h3>Left to your goal</h3><strong id="month-customer-hours-left">0h</strong></div>
+          <p class="field-help">Customer target shortfalls · largest gaps first. Time off does not reduce customer estimates.</p>
+          <div id="month-priorities"></div>
+        </article>
+      </div>
     </section>
     <footer><span>Less guesswork. More room for life.</span><button class="text-button" id="clear-week">Clear this week</button></footer>
   </main>
