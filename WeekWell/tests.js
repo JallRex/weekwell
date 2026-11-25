@@ -110,6 +110,66 @@
       }, settings, targets);
       equal(customers.map(customer => [customer.name, customer.minutes]), [["CustomerX", 900], ["CustA", 0]]);
     }],
+    ["Monthly targets use active weekdays and project dates, including partial boundary weeks", () => {
+      const state = { settings, weeks: {}, customerTargets: [
+        { customer: "Full month", target: 7.5, percent: 20 },
+        { customer: "Three weeks", target: 7.5, percent: 20, startDate: "2026-10-05", endDate: "2026-10-23" },
+        { customer: "Not active", target: 10, startDate: "2026-11-01" }
+      ] };
+      const october = M.monthlySummary(state, "2026-10");
+      equal(october.weekdays, 22);
+      equal(october.customers.map(customer => [customer.name, customer.target]),
+        [["Full month", 1980], ["Three weeks", 1350], ["Not active", 0]]);
+      equal(M.customerSummary({ visits: [], breaks: {} }, settings, state.customerTargets, "2026-10-19")
+        .find(customer => customer.name === "Three weeks").target, 450);
+      equal(M.customerSummary({ visits: [], breaks: {} }, settings, state.customerTargets, "2026-10-26")
+        .find(customer => customer.name === "Three weeks").target, null);
+      state.settings = { ...settings, target: 40 };
+      equal(M.monthlySummary(state, "2026-10").customers.find(customer => customer.name === "Full month").target, 2112);
+      equal(M.monthlySummary(state, "2028-02").weekdays, 21);
+    }],
+    ["Monthly billed totals split weeks at calendar boundaries and deduct breaks from their owner", () => {
+      const state = { settings, customerTargets: [{ customer: "A", target: 7.5 }], weeks: {
+        "2026-11-30": { visits: [visit(0, "08:00", "16:00", "A"), visit(1, "08:00", "16:00", "A"),
+          { ...visit(1, "10:00", "11:00", "B"), extra: true }], breaks: {} }
+      } };
+      const november = M.monthlySummary(state, "2026-11");
+      const december = M.monthlySummary(state, "2026-12");
+      equal(november.customers.find(customer => customer.name === "A").minutes, 450);
+      equal(december.customers.map(customer => [customer.name, customer.minutes]), [["A", 450], ["B", 60]]);
+    }],
+    ["Time off remains separate from customer targets and optionally reduces overall goals", () => {
+      const plan = { visits: [visit(0, "08:00", "16:00", "A")], breaks: {}, timeOff: {
+        0: { type: "sick", reduceGoal: false }, 1: { type: "holiday", reduceGoal: true },
+        5: { type: "other", reduceGoal: true }
+      } };
+      const week = M.calculate(plan, settings);
+      equal([week.total, week.timeOff, week.adjustment, week.baseTarget, week.target], [450, 900, 450, 2250, 1800]);
+      const month = M.monthlySummary({ settings, weeks: { "2026-11-02": plan },
+        customerTargets: [{ customer: "A", target: 7.5 }] }, "2026-11");
+      equal([month.weekdays, month.timeOff, month.adjustment, month.target, month.customers[0].target],
+        [21, 900, 450, 9000, 1890]);
+      plan.timeOff = Object.fromEntries([0, 1, 2, 3, 4].map(day => [day, { type: "sick", reduceGoal: true }]));
+      equal(M.calculate(plan, settings).target, 0);
+    }],
+    ["New fields round-trip and reject invalid descriptions, project dates and time-off entries", () => {
+      const saved = { version: 1, settings, customerTargets: [
+        { customer: "A", target: 7.5, percent: 20, startDate: "2026-11-01", endDate: "2026-12-31" }
+      ], weeks: { "2026-11-09": { visits: [{ ...visit(0, "08:00", "16:00", "A"), description: "Test note" }],
+        breaks: {}, timeOff: { 0: { type: "sick", reduceGoal: false } } } } };
+      equal(M.validState(JSON.parse(JSON.stringify(saved))), true);
+      const badDescription = structuredClone(saved);
+      badDescription.weeks["2026-11-09"].visits[0].description = "x".repeat(501);
+      equal(M.validState(badDescription), false);
+      for (const changes of [{ percent: 101 }, { startDate: "2026-02-30" }, { endDate: "2026-10-01" }]) {
+        const bad = structuredClone(saved);
+        Object.assign(bad.customerTargets[0], changes);
+        equal(M.validState(bad), false);
+      }
+      const badTimeOff = structuredClone(saved);
+      badTimeOff.weeks["2026-11-09"].timeOff[0].reduceGoal = "yes";
+      equal(M.validState(badTimeOff), false);
+    }],
     ["Invalid, reversed, overnight, and zero-length visits are rejected", () => {
       for (const [start, end] of [["25:00", "26:00"], ["08:60", "12:00"], ["22:00", "06:00"], ["08:00", "08:00"]]) {
         equal(Boolean(M.visitError(visit(0, start, end), [])), true);

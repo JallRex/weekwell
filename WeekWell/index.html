@@ -83,6 +83,16 @@
         <div id="customer-priorities"></div>
       </article>
     </section>
+    <section class="monthly-panel" aria-labelledby="month-heading">
+      <div class="section-heading">
+        <div><h2 id="month-heading">Monthly overview</h2><p>Customer estimates use active weekdays; planned visits count on their calendar dates.</p></div>
+        <div class="week-picker"><button class="icon-button" id="previous-month" aria-label="Previous month">‹</button><h2 id="month-label"></h2><button class="icon-button" id="next-month" aria-label="Next month">›</button></div>
+      </div>
+      <p class="month-totals" id="month-totals"></p>
+      <p class="month-totals" id="month-customer-totals"></p>
+      <p class="field-help">Time off is shown separately. Only days marked “reduce overall goal” adjust the overall goal; customer estimates remain unchanged.</p>
+      <div id="month-customers"></div>
+    </section>
     <footer><span>Less guesswork. More room for life.</span><button class="text-button" id="clear-week">Clear this week</button></footer>
   </main>
 
@@ -90,6 +100,7 @@
     <form id="visit-form">
       <div class="dialog-heading"><div><div class="eyebrow">MAKE A LITTLE PLAN</div><h2 id="visit-dialog-title">Plan a customer visit</h2></div><button type="button" class="icon-button close-dialog" aria-label="Close">×</button></div>
       <label>Customer / location<input id="visit-customer" name="customer" required maxlength="80" placeholder="e.g. Northside office" autocomplete="off" list="customer-suggestions"></label>
+      <label>Description / comment (optional)<textarea id="visit-description" maxlength="500" rows="3" placeholder="Add a note about this visit"></textarea></label>
       <datalist id="customer-suggestions"></datalist>
       <label>Day<select id="visit-day" name="day"></select></label>
       <div class="form-columns">
@@ -106,14 +117,14 @@
   <dialog id="export-dialog" aria-labelledby="export-title">
     <div class="dialog-heading"><h2 id="export-title">Save your plans and records</h2><button type="button" class="icon-button close-dialog" aria-label="Close">×</button></div>
     <h3>Full backup</h3>
-    <p class="field-help">Download all weeks, recurring targets, preferences, extra assignments, and custom breaks as JSON. Keep it safe: it contains customer names and schedules.</p>
+    <p class="field-help">Download all weeks, customer allocations, descriptions, days off, preferences, extra assignments, and custom breaks as JSON. Keep it safe: it contains personal information and schedules.</p>
     <button class="button primary" id="download-backup">Download JSON backup</button>
     <h3 class="export-subheading">Restore a backup</h3>
     <p class="field-help">Replaces all plans and preferences on this device, not just the selected week. Download your current backup first. Nothing is uploaded.</p>
     <label>Weekwell JSON file<input id="restore-file" type="file" accept=".json,application/json"></label>
     <p id="export-status" class="field-help" role="status" aria-live="polite"></p>
     <h3 class="export-subheading">Weekly record</h3>
-    <p class="field-help">Print the selected week's visits, breaks, totals, and customer targets, or choose Save as PDF. This is a record of your entered plan, not independently verified proof of work.</p>
+    <p class="field-help">Print the selected week's visits, descriptions, breaks, totals, and customer targets, or choose Save as PDF. This is a record of your entered plan, not independently verified proof of work.</p>
     <button class="button secondary" id="print-report">Print weekly report / PDF</button>
   </dialog>
   <section id="printable-report" aria-label="Weekly planning report"></section>
@@ -138,10 +149,23 @@
     <form id="customer-form">
       <div class="dialog-heading"><div><div class="eyebrow">KEEP EACH CUSTOMER ON TRACK</div><h2 id="customer-title">Add customer target</h2></div><button type="button" class="icon-button close-dialog" aria-label="Close">×</button></div>
       <label>Customer / location<input id="target-customer" required maxlength="80" placeholder="e.g. CustomerX" autocomplete="off"></label>
-      <label>Weekly target (hours)<input id="customer-target-hours" type="number" min="0.25" max="168" step="0.25" required placeholder="18.5"></label>
-      <p class="field-help">Repeats every week until changed. Progress includes extra billed assignments and deducts breaks only from the day's main customer. Changes apply to all saved weeks.</p>
+      <label>Weekly allocation type<select id="customer-target-unit"><option value="hours">Hours per week</option><option value="percent">Percent of weekly goal</option></select></label>
+      <label id="customer-target-label">Weekly allocation<input id="customer-target-hours" type="number" min="0.01" max="168" step="any" required placeholder="18.5"></label>
+      <p class="field-help" id="customer-target-preview"></p>
+      <div class="form-columns"><label>Project start (optional)<input id="customer-start" type="date"></label><label>Project end (optional)<input id="customer-end" type="date"></label></div>
+      <p class="field-help">Dates are inclusive. Blank dates have no limit. Monthly and partial-week estimates are prorated by active weekdays. Time off does not reduce customer targets. Editing applies to all saved weeks.</p>
       <p class="form-error" id="customer-error" role="alert" hidden></p>
       <div class="dialog-actions"><button type="button" class="button danger" id="remove-customer-target" hidden>Remove target</button><button type="button" class="button secondary close-dialog">Cancel</button><button type="submit" class="button primary">Save target</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="time-off-dialog" aria-labelledby="time-off-title">
+    <form id="time-off-form">
+      <div class="dialog-heading"><h2 id="time-off-title">Mark a day off</h2><button type="button" class="icon-button close-dialog" aria-label="Close">×</button></div>
+      <label>Type<select id="time-off-type"><option value="sick">Sick day</option><option value="holiday">Holiday</option><option value="other">Other day off</option></select></label>
+      <label class="checkbox-label"><input id="time-off-reduce" type="checkbox"><span>Reduce overall goal<small>Subtract one weekday share from the weekly and monthly overall goals. Customer targets stay unchanged; weekends have no automatic deduction.</small></span></label>
+      <p class="field-help">Visits can still be planned on this day and will be highlighted. Day-off labels are included in backups and cloud saves.</p>
+      <div class="dialog-actions"><button type="button" class="button danger" id="remove-time-off" hidden>Remove day off</button><button type="button" class="button secondary close-dialog">Cancel</button><button type="submit" class="button primary">Save day off</button></div>
     </form>
   </dialog>
 

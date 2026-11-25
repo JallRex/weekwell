@@ -7,8 +7,9 @@
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
   const hours = mins => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(mins / 60);
   const duration = mins => {
+    mins = Math.round(mins);
     const h = Math.floor(mins / 60);
-    const m = Math.round(mins % 60);
+    const m = mins % 60;
     return [h ? `${h}h` : "", m ? `${m}m` : ""].filter(Boolean).join(" ") || "0h";
   };
   const formatDate = (date, options) => date.toLocaleDateString("en-GB", options);
@@ -16,9 +17,11 @@
   let protectedStorage = false;
   let state = { version: 1, settings: { ...M.DEFAULT_SETTINGS }, customerTargets: [], weeks: {} };
   let currentWeek = M.mondayKey(new Date());
+  let currentMonth = M.dateKey(new Date()).slice(0, 7);
   let editingId = null;
   let editingCustomerKey = null;
   let breakDay = 0;
+  let timeOffDay = 0;
   let confirmAction = null;
 
   function storageWarning(message, recoverable = false) {
@@ -117,16 +120,17 @@
     const start = dateAt(0);
     const end = dateAt(6);
     $("week-label").textContent = `${formatDate(start, { day: "numeric", month: "short" })} – ${formatDate(end, { day: "numeric", month: "short", year: "numeric" })}`;
-    $("target-label").textContent = `${hours(stats.target)}h weekly goal`;
+    $("target-label").textContent = `${hours(stats.target)}h weekly goal${stats.timeOff ? ` · ${duration(stats.timeOff)} time off${stats.adjustment ? ` (−${duration(stats.adjustment)} from goal)` : " (goal unchanged)"}` : ""}`;
     $("planned-hours").textContent = hours(stats.total);
     $("planned-goal").textContent = `/ ${hours(stats.target)}h goal`;
     $("planned-card").classList.toggle("goal-exceeded", stats.overtime > 0);
-    $("week-progress").style.width = `${Math.min(100, stats.total / stats.target * 100)}%`;
-    $("week-progress-track").setAttribute("aria-valuemax", stats.target / 60);
+    const progress = stats.target > 0 ? Math.min(100, stats.total / stats.target * 100) : 100;
+    $("week-progress").style.width = `${progress}%`;
+    $("week-progress-track").setAttribute("aria-valuemax", Math.max(stats.target / 60, 1));
     $("week-progress-track").setAttribute("aria-valuenow", Math.min(stats.total, stats.target) / 60);
     $("week-progress-track").setAttribute("aria-valuetext",
       `${hours(stats.total)} of ${hours(stats.target)} hours${stats.overtime > 0 ? `, ${duration(stats.overtime)} above goal` : ""}`);
-    $("planned-caption").textContent = stats.total === 0 ? "A fresh week. Make it yours." :
+    $("planned-caption").textContent = stats.target === 0 ? "Overall goal covered by time off." : stats.total === 0 ? "A fresh week. Make it yours." :
       `${Math.round(stats.total / stats.target * 100)}% of your goal · ${duration(stats.breaks)} unpaid breaks`;
     $("remaining-hours").textContent = hours(stats.overtime || stats.remaining);
     $("remaining-label").textContent = stats.overtime > 0 ? "ABOVE YOUR GOAL" :
@@ -137,42 +141,48 @@
       stats.remaining === 0 ? "Weekly goal covered. Your time, your choice." : "Across the week, at your own pace.";
     $("freed-hours").textContent = hours(stats.fridayFreed);
     $("freed-caption").textContent = stats.fridayFreed > 0 ?
-      `${duration(stats.fridayFreed)} less needed on Friday, thanks to Mon–Thu.` :
+      `${duration(stats.fridayFreed)} less needed on Friday${stats.adjustment ? ", including overall goal adjustments." : ", thanks to Mon–Thu."}` :
       "Plan extra hours Mon–Thu to open up Friday.";
     $("freedom-tag").textContent = stats.fridayFreed >= stats.dailyShare ? "Friday goal covered" : "Your breathing room";
 
     $("day-grid").innerHTML = stats.days.map((day, index) => {
       const date = dateAt(index);
+      const timeOff = plan.timeOff?.[index];
+      const offLabel = timeOff ? { sick: "Sick day", holiday: "Holiday", other: "Day off" }[timeOff.type] : "";
       const isToday = M.dateKey(date) === M.dateKey(new Date());
       const isFriday = index === 4;
       const extra = index < 4 ? Math.max(0, day.net - stats.dailyShare) : 0;
       let note = index < 5 ? (day.net > 0 ? `${duration(Math.max(0, stats.dailyShare - day.net))} below daily share` : "Nothing planned yet") : "Optional extra hours";
       if (day.net === stats.dailyShare && index < 5) note = "Daily share covered";
       if (extra > 0) note = `↗ ${duration(extra)} toward a lighter Friday`;
-      if (isFriday && stats.fridayFreed > 0) note = "A little space, earned earlier";
+      if (isFriday && stats.fridayFreed > 0) note = stats.adjustment ? "Less needed for your goal" : "A little space, earned earlier";
+      if (timeOff && !day.visits.length) note = "Day off · no work planned";
       const visits = day.visits.map(visit => `
         <button class="visit-block tone-${customerTone(visit.customer)}" data-edit="${escape(visit.id)}" aria-label="Edit ${escape(visit.customer)}, ${visit.start} to ${visit.end}, ${day.name}">
           <span class="visit-customer">${escape(visit.customer)}</span>
           <span class="visit-time">${visit.start} – ${visit.end}</span>
           <span class="visit-duration">${duration(M.minutes(visit.end) - M.minutes(visit.start))} ${visit.extra ? "extra billed" : "on location"}</span>
+          ${visit.description ? `<span class="visit-description">${escape(visit.description)}</span>` : ""}
           ${visit.extra ? '<span class="extra-badge">＋ Extra billing</span>' : ""}
         </button>`).join("");
-      return `<article class="day-card${index > 4 ? " weekend" : ""}${isToday ? " today" : ""}" aria-label="${day.name}">
+      return `<article class="day-card${index > 4 ? " weekend" : ""}${isToday ? " today" : ""}${timeOff ? " day-off" : ""}" aria-label="${day.name}">
         <div class="day-header"><span class="day-name">${day.name}</span><span class="day-date"${isToday ? ' aria-label="Today"' : ""}>${date.getDate()}</span></div>
+        ${timeOff ? `<div class="day-off-badge">${offLabel}${day.visits.length ? " · work also planned" : ""}<br><span>${timeOff.reduceGoal && index < 5 ? `Overall goal −${duration(stats.dailyShare)}` : "Overall goal unchanged"}</span></div>` : ""}
         <div class="day-total">${hours(day.net)}<span>h</span></div>
         <div class="day-share">${index < 5 ? `/ ${hours(stats.dailyShare)}h daily share` : "outside the five-day goal"}</div>
         <div class="day-bar"><div class="${extra > 0 ? "ahead" : ""}" style="width:${Math.min(100, day.net / stats.dailyShare * 100)}%"></div></div>
-        ${visits ? `<div class="visits">${visits}</div>` : `<div class="empty-day">${index > 4 ? "A little room<br>for whatever comes." : "An open day.<br>Start with a visit."}</div>`}
+        ${visits ? `<div class="visits">${visits}</div>` : `<div class="empty-day">${timeOff ? "Day marked off.<br>Visits can still be added." : index > 4 ? "A little room<br>for whatever comes." : "An open day.<br>Start with a visit."}</div>`}
         ${isFriday && stats.fridayFreed > 0 ? `<div class="freed-slot"><strong>✧ ${duration(stats.fridayFreed)} freed up</strong><span>Less needed for your goal.<br>Not a specific clock-time slot.</span></div>` : ""}
         <div class="day-footer">
           <button class="break-button" data-break="${index}" aria-label="Edit ${day.name} unpaid break">◷ ${day.gross > 0 ? day.deduction : day.breakMinutes} min break${Object.hasOwn(plan.breaks, index) ? " · custom" : ""}${day.breakCustomer ? ` · ${escape(day.breakCustomer)}` : " · regular work only"}</button>
+          <button class="break-button" data-time-off="${index}" aria-label="${timeOff ? "Edit" : "Mark"} ${day.name} day off">${timeOff ? "Edit day off" : "Mark day off"}</button>
           <span class="day-note">${note}</span>
           <button class="add-visit" data-add="${index}" aria-label="Add visit on ${day.name}">＋ Add visit</button>
         </div>
       </article>`;
     }).join("");
 
-    const customers = M.customerSummary(plan, state.settings, state.customerTargets);
+    const customers = M.customerSummary(plan, state.settings, state.customerTargets, currentWeek);
     $("total-billed-hours").textContent = `${hours(stats.total)}h`;
     $("expected-hours").textContent = `${hours(stats.regularTotal)}h`;
     const priorities = customers.filter(customer => customer.target !== null && customer.minutes < customer.target)
@@ -180,20 +190,42 @@
     $("customer-hours-left").textContent = duration(priorities.reduce((sum, customer) => sum + customer.target - customer.minutes, 0));
     $("customer-priorities").innerHTML = priorities.length ? `<ol class="priority-list">${priorities.map(customer =>
       `<li><span>${escape(customer.name)}</span><strong>${duration(customer.target - customer.minutes)} left</strong></li>`
-    ).join("")}</ol>` : `<p class="customer-empty">${state.customerTargets.length ?
-      "All customer targets covered. Nicely planned!" : "Add customer targets to see who needs your time next."}</p>`;
+    ).join("")}</ol>` : `<p class="customer-empty">${customers.some(customer => customer.target !== null) ?
+      "All active customer targets covered. Nicely planned!" : "Add customer targets or choose an active project week."}</p>`;
     $("customer-breakdown").innerHTML = customers.length ? customers.map(customer => {
       const hasTarget = customer.target !== null;
       const remaining = hasTarget ? Math.max(0, customer.target - customer.minutes) : 0;
       const met = hasTarget && remaining === 0;
-      const status = !hasTarget ? "No weekly target" : remaining > 0 ? `${duration(remaining)} still needed` :
+      const status = !hasTarget ? (customer.configured ? "Outside project dates" : "No weekly target") : remaining > 0 ? `${duration(remaining)} still needed` :
         customer.minutes > customer.target ? `${duration(customer.minutes - customer.target)} above target` : "Target reached";
       return `<div class="customer-goal${met ? " goal-met" : ""}" data-customer="${escape(customer.name)}">
         <div class="customer-row"><i class="customer-dot tone-${customerTone(customer.name)}"></i><span class="customer-name">${escape(customer.name)}</span><strong>${hours(customer.minutes)}h${hasTarget ? ` <small>/ ${hours(customer.target)}h</small>` : ""}</strong></div>
         ${hasTarget ? `<div class="customer-progress" role="progressbar" aria-label="${escape(customer.name)} weekly target" aria-valuemin="0" aria-valuemax="${customer.target / 60}" aria-valuenow="${Math.min(customer.minutes, customer.target) / 60}" aria-valuetext="${escape(`${hours(customer.minutes)} of ${hours(customer.target)} hours. ${status}`)}"><div style="width:${Math.min(100, customer.minutes / customer.target * 100)}%"></div></div>` : ""}
-        <div class="customer-goal-footer"><span>${met ? "✓ " : ""}${status}</span><button class="text-button" data-target="${escape(customer.name)}" aria-label="${hasTarget ? "Edit" : "Set"} ${escape(customer.name)} weekly target">${hasTarget ? "Edit target" : "Set target"}</button></div>
+        <div class="customer-goal-footer"><span>${met ? "✓ " : ""}${status}</span><button class="text-button" data-target="${escape(customer.name)}" aria-label="${customer.configured ? "Edit" : "Set"} ${escape(customer.name)} weekly target">${customer.configured ? "Edit target" : "Set target"}</button></div>
       </div>`;
     }).join("") : '<p class="customer-empty">Add a customer target or plan a visit to start tracking their week.</p>';
+    renderMonth();
+  }
+
+  function renderMonth() {
+    const month = M.monthlySummary(state, currentMonth);
+    const date = M.fromKey(`${currentMonth}-01`);
+    $("month-label").textContent = formatDate(date, { month: "long", year: "numeric" });
+    $("month-totals").textContent = `${month.weekdays} weekdays · Overall goal ${hours(month.baseTarget)}h${month.timeOff ? ` · Time off ${duration(month.timeOff)}${month.adjustment ? ` · Goal adjustment −${duration(month.adjustment)} = ${hours(month.target)}h` : " (goal unchanged)"}` : ""}`;
+    $("month-customer-totals").textContent = `Customer estimates: ${hours(month.customers.reduce((sum, customer) => sum + (customer.target ?? 0), 0))}h · Planned billed: ${hours(month.customers.reduce((sum, customer) => sum + customer.minutes, 0))}h`;
+    $("month-customers").innerHTML = month.customers.length ? month.customers.map(customer => {
+      const active = customer.configured && customer.target > 0;
+      const remaining = active ? Math.max(0, customer.target - customer.minutes) : 0;
+      const met = active && remaining === 0;
+      const status = !customer.configured ? "No customer estimate" : !active ? "Outside project dates" :
+        remaining > 0 ? `${duration(remaining)} still needed` :
+        customer.minutes > customer.target ? `${duration(customer.minutes - customer.target)} above target` : "Target reached";
+      return `<div class="customer-goal${met ? " goal-met" : ""}">
+        <div class="customer-row"><i class="customer-dot tone-${customerTone(customer.name)}"></i><span class="customer-name">${escape(customer.name)}</span><strong>${hours(customer.minutes)}h${active ? ` <small>/ ${hours(customer.target)}h</small>` : ""}</strong></div>
+        ${active ? `<div class="customer-progress" role="progressbar" aria-label="${escape(customer.name)} monthly target" aria-valuemin="0" aria-valuemax="${customer.target / 60}" aria-valuenow="${Math.min(customer.minutes, customer.target) / 60}" aria-valuetext="${escape(`${hours(customer.minutes)} of ${hours(customer.target)} hours. ${status}`)}"><div style="width:${Math.min(100, customer.minutes / customer.target * 100)}%"></div></div>` : ""}
+        <div class="customer-goal-footer"><span>${met ? "✓ " : ""}${status}</span><button class="text-button" data-target="${escape(customer.name)}">${customer.configured ? "Edit target" : "Set target"}</button></div>
+      </div>`;
+    }).join("") : '<p class="customer-empty">Add customer targets or visits to see your monthly overview.</p>';
   }
 
   function defaultTimes(day) {
@@ -239,6 +271,7 @@
     ).join("");
     $("visit-day").value = existing ? existing.day : day;
     $("visit-customer").value = existing?.customer ?? "";
+    $("visit-description").value = existing?.description ?? "";
     $("visit-extra").checked = existing?.extra ?? false;
     if (existing) {
       setTime("start", existing.start);
@@ -261,7 +294,11 @@
     $("customer-title").textContent = target ? "Edit customer target" : "Add customer target";
     $("target-customer").value = target?.customer ?? name ?? "";
     $("target-customer").readOnly = name !== null;
-    $("customer-target-hours").value = target?.target ?? "";
+    $("customer-target-unit").value = target?.percent !== undefined ? "percent" : "hours";
+    $("customer-target-hours").value = target?.percent ?? target?.target ?? "";
+    $("customer-start").value = target?.startDate ?? "";
+    $("customer-end").value = target?.endDate ?? "";
+    updateTargetPreview();
     $("remove-customer-target").hidden = !target;
     $("customer-dialog").showModal();
     (name ? $("customer-target-hours") : $("target-customer")).focus();
@@ -287,8 +324,18 @@
     const add = event.target.closest("[data-add]");
     const edit = event.target.closest("[data-edit]");
     const breakButton = event.target.closest("[data-break]");
+    const offButton = event.target.closest("[data-time-off]");
     if (add) openVisit(Number(add.dataset.add));
     if (edit) openVisit(0, edit.dataset.edit);
+    if (offButton) {
+      timeOffDay = Number(offButton.dataset.timeOff);
+      const saved = week().timeOff?.[timeOffDay];
+      $("time-off-title").textContent = `${M.DAYS[timeOffDay]} · day off`;
+      $("time-off-type").value = saved?.type ?? "sick";
+      $("time-off-reduce").checked = saved?.reduceGoal ?? false;
+      $("remove-time-off").hidden = !saved;
+      $("time-off-dialog").showModal();
+    }
     if (breakButton) {
       breakDay = Number(breakButton.dataset.break);
       $("break-title").textContent = `${M.DAYS[breakDay]}'s unpaid break`;
@@ -319,7 +366,8 @@
       day: Number($("visit-day").value),
       start: selectedTime("start"),
       end: selectedTime("end"),
-      extra: $("visit-extra").checked
+      extra: $("visit-extra").checked,
+      description: $("visit-description").value.trim()
     };
     const error = M.visitError(visit, week().visits, editingId);
     if (error) {
@@ -356,11 +404,38 @@
     commit("Daily break restored to default.");
   });
 
+  $("time-off-form").addEventListener("submit", event => {
+    event.preventDefault();
+    const days = mutableWeek().timeOff ??= {};
+    days[timeOffDay] = { type: $("time-off-type").value, reduceGoal: $("time-off-reduce").checked };
+    $("time-off-dialog").close();
+    commit(`${M.DAYS[timeOffDay]} marked as a day off.`);
+  });
+  $("remove-time-off").addEventListener("click", () => {
+    delete mutableWeek().timeOff[timeOffDay];
+    $("time-off-dialog").close();
+    commit("Day off removed.");
+  });
+
+  function updateTargetPreview() {
+    const percent = $("customer-target-unit").value === "percent";
+    const input = $("customer-target-hours");
+    input.max = percent ? "100" : "168";
+    const value = Number(input.value);
+    $("customer-target-preview").textContent = value > 0 ?
+      percent ? `${hours(state.settings.target * 60 * value / 100)}h per full week at the current weekly goal.` :
+        `${hours(value * 60)}h per full week (${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value / state.settings.target * 100)}% of the current weekly goal).` :
+      "Enter the allocation for a full week.";
+  }
+  $("customer-target-unit").addEventListener("change", updateTargetPreview);
+  $("customer-target-hours").addEventListener("input", updateTargetPreview);
   $("add-customer").addEventListener("click", () => openCustomer());
-  $("customer-breakdown").addEventListener("click", event => {
+  function customerClick(event) {
     const button = event.target.closest("[data-target]");
     if (button) openCustomer(button.dataset.target);
-  });
+  }
+  $("customer-breakdown").addEventListener("click", customerClick);
+  $("month-customers").addEventListener("click", customerClick);
   $("customer-form").addEventListener("submit", event => {
     event.preventDefault();
     const customer = $("target-customer").value.trim();
@@ -373,7 +448,19 @@
       $("customer-error").hidden = false;
       return;
     }
-    const entry = { customer, target: Number($("customer-target-hours").value) };
+    const startDate = $("customer-start").value;
+    const endDate = $("customer-end").value;
+    if (startDate && endDate && startDate > endDate) {
+      $("customer-error").textContent = "Project end date must be on or after the start date.";
+      $("customer-error").hidden = false;
+      return;
+    }
+    const value = Number($("customer-target-hours").value);
+    const percent = $("customer-target-unit").value === "percent";
+    const entry = { customer, target: percent ? state.settings.target * value / 100 : value };
+    if (percent) entry.percent = value;
+    if (startDate) entry.startDate = startDate;
+    if (endDate) entry.endDate = endDate;
     if (editingCustomerKey) state.customerTargets = state.customerTargets.map(target =>
       M.customerKey(target.customer) === editingCustomerKey ? entry : target);
     else state.customerTargets.push(entry);
@@ -410,10 +497,19 @@
   document.querySelectorAll(".close-dialog").forEach(button => button.addEventListener("click", () => button.closest("dialog").close()));
   $("previous-week").addEventListener("click", () => changeWeek(-1));
   $("next-week").addEventListener("click", () => changeWeek(1));
+  function changeMonth(offset) {
+    const date = M.fromKey(`${currentMonth}-01`);
+    date.setMonth(date.getMonth() + offset);
+    currentMonth = M.dateKey(date).slice(0, 7);
+    renderMonth();
+    announce(`Showing ${$("month-label").textContent}`);
+  }
+  $("previous-month").addEventListener("click", () => changeMonth(-1));
+  $("next-month").addEventListener("click", () => changeMonth(1));
   $("this-week").addEventListener("click", () => { currentWeek = M.mondayKey(new Date()); render(); });
   $("add-visit-top").addEventListener("click", () => openVisit(currentWeek === M.mondayKey(new Date()) ? (new Date().getDay() + 6) % 7 : 0));
   $("clear-week").addEventListener("click", () => confirm(
-    "Clear this week's plan?", "All visits and custom breaks in this week will be removed. Other weeks and preferences will stay unchanged.",
+    "Clear this week's plan?", "All visits, days off and custom breaks in this week will be removed. Other weeks and preferences will stay unchanged.",
     "Clear week", () => { delete state.weeks[currentWeek]; commit("Week cleared."); }
   ));
   $("example-button").addEventListener("click", () => {
@@ -430,8 +526,8 @@
       };
       commit("Example loaded: 7.5, 9.5, 9.5, 7.5 and 3.75 paid hours. Weekly goal unchanged.");
     };
-    if (week().visits.length || Object.keys(week().breaks).length) {
-      confirm("Try your example?", "This replaces the selected week's plan with your example: 7.5h, 9.5h, 9.5h, 7.5h, and 3.75h after daily 30-minute breaks. Your weekly goal stays unchanged.", "Load example", applyExample);
+    if (week().visits.length || Object.keys(week().breaks).length || Object.keys(week().timeOff ?? {}).length) {
+      confirm("Try your example?", "This replaces the selected week's visits, days off and breaks with your example: 7.5h, 9.5h, 9.5h, 7.5h, and 3.75h after daily 30-minute breaks. Your weekly goal stays unchanged.", "Load example", applyExample);
     } else applyExample();
   });
 
@@ -539,24 +635,24 @@
 
   function renderReport() {
     const stats = M.calculate(week(), state.settings);
-    const customers = M.customerSummary(week(), state.settings, state.customerTargets);
+    const customers = M.customerSummary(week(), state.settings, state.customerTargets, currentWeek);
     const rows = stats.days.flatMap((day, index) => day.visits.map(visit =>
-      `<tr><td>${day.name}, ${M.dateKey(dateAt(index))}</td><td>${escape(visit.customer)}</td><td>${visit.start}</td><td>${visit.end}</td><td>${visit.extra ? "Extra billed" : "Regular"}</td><td>${hours(M.minutes(visit.end) - M.minutes(visit.start))}h</td></tr>`
+      `<tr><td>${day.name}, ${M.dateKey(dateAt(index))}</td><td>${escape(visit.customer)}</td><td>${visit.start}</td><td>${visit.end}</td><td>${visit.extra ? "Extra billed" : "Regular"}</td><td>${hours(M.minutes(visit.end) - M.minutes(visit.start))}h</td><td>${escape(visit.description ?? "")}</td></tr>`
     )).join("");
     $("printable-report").innerHTML = `
       <h1>Weekwell · Weekly planning record</h1>
       <p><strong>${escape($("week-label").textContent)}</strong><br>Generated ${escape(new Date().toLocaleString("en-GB", { hour12: false }))}</p>
       <p>Entered plan only — not independently verified proof of work. Extra assignments may overlap; totals are billed hours, not unique elapsed working time.</p>
-      <p><strong>Total billed after breaks: ${hours(stats.total)}h</strong> · Goal: ${hours(stats.target)}h · Remaining: ${hours(stats.remaining)}h · Above goal: ${hours(stats.overtime)}h<br>Friday goal left: ${hours(stats.fridayLeft)}h · Friday goal time freed: ${hours(stats.fridayFreed)}h (based on Monday–Thursday only)</p>
+      <p><strong>Total billed after breaks: ${hours(stats.total)}h</strong> · Goal: ${hours(stats.target)}h · Remaining: ${hours(stats.remaining)}h · Above goal: ${hours(stats.overtime)}h<br>Time off: ${duration(stats.timeOff)} · Goal adjustment: ${duration(stats.adjustment)}<br>Friday goal left: ${hours(stats.fridayLeft)}h · Friday goal time freed: ${hours(stats.fridayFreed)}h (based on Monday–Thursday billing and overall goal adjustments)</p>
       <h2>Customer targets and totals</h2>
       <table><thead><tr><th>Customer</th><th>Billed after breaks</th><th>Weekly target</th><th>Progress</th></tr></thead><tbody>${customers.length ? customers.map(customer =>
-        `<tr><td>${escape(customer.name)}</td><td>${hours(customer.minutes)}h</td><td>${customer.target === null ? "Not set" : `${hours(customer.target)}h`}</td><td>${customer.target === null ? "No target" : customer.minutes < customer.target ? `${hours(customer.target - customer.minutes)}h still needed` : customer.minutes === customer.target ? "Target reached" : `${hours(customer.minutes - customer.target)}h above target`}</td></tr>`
+        `<tr><td>${escape(customer.name)}</td><td>${hours(customer.minutes)}h</td><td>${customer.target === null ? (customer.configured ? "Not active" : "Not set") : `${hours(customer.target)}h`}</td><td>${customer.target === null ? (customer.configured ? "Outside project dates" : "No target") : customer.minutes < customer.target ? `${hours(customer.target - customer.minutes)}h still needed` : customer.minutes === customer.target ? "Target reached" : `${hours(customer.minutes - customer.target)}h above target`}</td></tr>`
       ).join("") : '<tr><td colspan="4">No customers planned or targets set.</td></tr>'}</tbody></table>
       <h2>Visits · durations before daily breaks</h2>
-      <table><thead><tr><th>Day / date</th><th>Customer</th><th>Start</th><th>End</th><th>Type</th><th>Duration</th></tr></thead><tbody>${rows || '<tr><td colspan="6">No visits planned.</td></tr>'}</tbody></table>
+      <table><thead><tr><th>Day / date</th><th>Customer</th><th>Start</th><th>End</th><th>Type</th><th>Duration</th><th>Description</th></tr></thead><tbody>${rows || '<tr><td colspan="7">No visits planned.</td></tr>'}</tbody></table>
       <h2>Daily totals and actual break deductions</h2>
-      <table><thead><tr><th>Day</th><th>Gross billed</th><th>Break deducted</th><th>Main customer</th><th>Net billed</th></tr></thead><tbody>${stats.days.map(day =>
-        `<tr><td>${day.name}</td><td>${hours(day.gross)}h</td><td>${day.deduction} min</td><td>${escape(day.breakCustomer ?? "None")}</td><td>${hours(day.net)}h</td></tr>`
+      <table><thead><tr><th>Day</th><th>Day off</th><th>Gross billed</th><th>Break deducted</th><th>Main customer</th><th>Net billed</th></tr></thead><tbody>${stats.days.map((day, index) =>
+        `<tr><td>${day.name}</td><td>${week().timeOff?.[index] ? `${escape({ sick: "Sick day", holiday: "Holiday", other: "Other" }[week().timeOff[index].type])}${week().timeOff[index].reduceGoal ? " · reduces goal" : ""}` : "None"}</td><td>${hours(day.gross)}h</td><td>${day.deduction} min</td><td>${escape(day.breakCustomer ?? "None")}</td><td>${hours(day.net)}h</td></tr>`
       ).join("")}</tbody></table>
       <p>Breaks are deducted only from the main customer's regular hours. Extra billed assignments retain their full duration. Recurring targets and preferences are recorded as configured when this report was generated.</p>`;
   }

@@ -10,6 +10,10 @@ Weekwell is a lightweight, responsive planner for people who divide their workin
 
 The seven-day planner supports multiple visits each day, 24-hour time selectors, and editable unpaid breaks. Customer targets repeat from week to week, with progress bars showing what is still needed, what is covered, and where you are ahead.
 
+Visits can include optional descriptions. Days can be marked as sick, holidays, or other time off, with an optional overall-goal reduction. Planned visits remain possible on those days and are clearly marked.
+
+The monthly overview shows all customers, planned billed hours, and customer estimates ordered by the largest remaining gap. A customer allocation can be expressed in weekly hours or as a percentage of the overall weekly goal, with optional inclusive project start and end dates. Monthly estimates count only active weekdays: a 20% allocation of a 37.5-hour week is 7.5 hours per full week, or 33 hours in a 22-weekday month. Partial weeks are apportioned by weekday. Time off does not reduce customer estimates.
+
 The weekly overview celebrates going beyond your goal with a green striped progress bar and a surplus-hours total. Beside the customer targets, a priority list highlights the largest unmet customer commitments. Extra time for one customer does not hide a shortfall for another.
 
 The default weekly goal is **37.5 billed hours after breaks**, with a **30-minute unpaid break on worked weekdays**. Both are adjustable.
@@ -23,6 +27,7 @@ The default weekly goal is **37.5 billed hours after breaks**, with a **30-minut
 | Weekly goal remaining / surplus | The difference between all billed hours and the weekly goal. |
 | Customer priorities: Left to your goal | Each customer's unmet weekly target, ordered by largest shortfall, plus their combined remaining hours. |
 | Friday time freed up | Reduced Friday goal obligations from Monday-Thursday billing, compared with an even five-day week. Not a guaranteed empty calendar slot. |
+| Monthly overall goal | Weekly goal divided by five, multiplied by the number of weekdays in the selected month; optionally reduced by the same daily share for marked days off. |
 
 Extra billed assignments may overlap a different customer's visit and count fully toward customer and weekly targets. Two regular visits cannot overlap, and the same customer's time cannot be billed twice. Visits stay within one day.
 
@@ -40,11 +45,11 @@ Cloud sign-in lasts for the current page session. Passwords and authentication t
 
 ## Backups and weekly records
 
-JSON backups preserve all weeks, recurring targets, preferences, extra assignments, and custom breaks. Restoring replaces the local plan only after validation and confirmation.
+JSON backups preserve all weeks, project dates and allocations, descriptions, days off, preferences, extra assignments, and custom breaks. Restoring replaces the local plan only after validation and confirmation.
 
 Printable weekly records include visits, customer progress, break deductions, totals, and Friday calculations, with browser PDF support. They are snapshots of entered plans, **not independently verified proof of work**.
 
-Backups and reports can contain customer names and schedules, so they should be treated as private documents.
+Backups, cloud plans, and reports can contain customer names, descriptions, schedules, and sensitive day-off information, so they should be treated as private documents. Cloud saves remain manual.
 
 ## Public code, private access
 

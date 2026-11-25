@@ -16,13 +16,13 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--background); color: var(--ink); }
-button, input, select { font: inherit; }
-button, a, input, select { -webkit-tap-highlight-color: transparent; }
+button, input, select, textarea { font: inherit; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 button, a { touch-action: manipulation; }
 button { color: inherit; }
 button:focus-visible, a:focus-visible { outline: 3px solid #aa96ea; outline-offset: 3px; }
-input:focus, select:focus { outline: 2px solid #aa96ea; outline-offset: 1px; border-color: var(--purple); }
+input:focus, select:focus, textarea:focus { outline: 2px solid #aa96ea; outline-offset: 1px; border-color: var(--purple); }
 button:disabled { opacity: .5; cursor: not-allowed; }
 [hidden] { display: none !important; }
 .sidebar { position: fixed; inset: 0 auto 0 0; width: 224px; background: #fff; padding: 37px 20px 24px; border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 2; }
@@ -134,9 +134,13 @@ h1 > span { color: var(--purple); }
 .visit-customer { font-size: 10px; font-weight: 650; display: block; line-height: 1.5; overflow-wrap: anywhere; }
 .visit-time { display: block; font-size: 9px; color: #9487a5; margin: 5px 0 6px; }
 .visit-duration { font-size: 8px; color: #9e93ac; }
+.visit-description { display: block; margin-top: 6px; font-size: 10px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; color: #6d627c; }
 .extra-badge { display: block; width: fit-content; margin-top: 7px; padding: 3px 5px; background: #e1ece5; color: #4b7c61; border-radius: 4px; font-size: 9px; }
 .empty-day { display: flex; align-items: center; justify-content: center; flex: 1; min-height: 75px; font-size: 10px; color: #b1aebb; text-align: center; line-height: 1.8; }
 .day-footer { margin-top: auto; }
+.day-card.day-off { background: #fff8f1; border-color: #e6bb92; }
+.day-off-badge { background: #faebdb; color: #80552e; font-size: 10px; font-weight: 700; line-height: 1.5; padding: 7px; border-radius: 5px; margin-bottom: 10px; overflow-wrap: anywhere; }
+.day-off-badge span { font-weight: 400; }
 .break-button { display: block; background: none; border: 0; padding: 6px 0; font-size: 8px; color: #9b96a7; text-align: left; width: 100%; overflow-wrap: anywhere; }
 .break-button:hover { color: var(--purple-dark); }
 .day-note { display: block; color: #6d9c84; font-size: 8px; min-height: 22px; line-height: 1.5; padding: 3px 0 6px; }
@@ -179,6 +183,9 @@ h1 > span { color: var(--purple); }
 .priority-list li { padding: 9px 0 9px 4px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
 .priority-list li::marker { color: var(--purple); font-weight: 700; }
 .priority-list strong { display: block; font-size: 11px; color: var(--green); margin-top: 4px; }
+.monthly-panel { background: white; border: 1px solid var(--border); border-radius: 9px; padding: 20px; margin-top: 20px; }
+.monthly-panel .section-heading { flex-wrap: wrap; }
+.month-totals { color: var(--purple-dark); font-size: 12px; line-height: 1.7; margin-bottom: 6px; }
 footer { display: flex; justify-content: space-between; align-items: center; color: #aaa7b5; border-top: 1px solid var(--border); margin-top: 28px; padding: 12px 0 18px; font-size: 9px; }
 footer .text-button { font-size: 9px; color: #a399ad; }
 .notice { border: 1px solid #e9c991; background: #fffaed; color: #805c2d; border-radius: 8px; padding: 13px 16px; margin-bottom: 20px; font-size: 12px; line-height: 1.7; }
@@ -190,7 +197,8 @@ dialog::backdrop { background: #28223750; backdrop-filter: blur(3px); }
 .dialog-heading h2 { margin: 6px 0 0; font-size: 20px; letter-spacing: -.6px; }
 .dialog-heading .icon-button { align-self: flex-start; }
 label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; font-weight: 550; margin-bottom: 18px; min-width: 0; }
-input, select { border: 1px solid #dedbe7; border-radius: 6px; padding: 11px; min-height: 43px; width: 100%; color: var(--ink); background: white; }
+input, select, textarea { border: 1px solid #dedbe7; border-radius: 6px; padding: 11px; min-height: 43px; width: 100%; color: var(--ink); background: white; }
+textarea { resize: vertical; }
 .form-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 .time-field { border: 0; padding: 0; margin: 0 0 18px; min-width: 0; }
 .time-field legend { font-size: 12px; font-weight: 550; padding: 0; margin-bottom: 7px; }
